@@ -85,6 +85,20 @@ if "messages" not in st.session_state:
     st.session_state.pdi_state = 0 
     st.session_state.configs = {} 
 
+# Função que executa o submit do formulário de seleção
+def submit_form(key, question):
+    # A resposta está no estado do componente de rádio button
+    selected_option = st.session_state[f'select_{st.session_state.pdi_state}']
+
+    # 1. Armazena a configuração
+    st.session_state.configs[key] = selected_option
+    
+    # 2. Registra a resposta no histórico como se fosse o usuário
+    st.session_state.messages.append({"role": "user", "content": f"{question}: {selected_option}"})
+    
+    # 3. Avança o estado
+    st.session_state.pdi_state += 1 
+
 
 # Função para montar o System Prompt baseado nas configurações
 def build_system_prompt():
@@ -123,7 +137,6 @@ def generate_gemini_response(prompt, api_key):
         
         history_messages.append(Content(role='user', parts=[Part.from_text(text=prompt)]))
 
-        # Removida a tentativa de usar 'stream=True' ou 'response_iterator'
         response = client.models.generate_content(
             model='gemini-2.5-flash', 
             contents=history_messages, 
@@ -159,66 +172,16 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
         st.chat_message("assistant").write(current_step["question"])
         
         # O formulário garante que o radio button e o botão de envio atuem como uma única unidade
+        # A função submit_form é chamada no envio
         with st.form(key=f'form_{st.session_state.pdi_state}'):
-            # Adiciona um rótulo vazio para melhorar o alinhamento
-            selected_option = st.radio(" ", current_step["options"], key=f'select_{st.session_state.pdi_state}')
+            # O st.radio armazena o valor no st.session_state com a key definida
+            st.radio("Selecione uma opção:", 
+                     current_step["options"], 
+                     key=f'select_{st.session_state.pdi_state}')
             
-            # O st.form_submit_button funciona mesmo com o st.button oculto pelo CSS
-            if st.form_submit_button("Confirmar e Continuar"):
-                # 1. Armazena a configuração
-                st.session_state.configs[current_step["key"]] = selected_option
-                
-                # 2. Registra a resposta no histórico como se fosse o usuário
-                st.session_state.messages.append({"role": "user", "content": f"{current_step['question']}: {selected_option}"})
-                
-                # 3. Avança o estado e recarrega
-                st.session_state.pdi_state += 1 
-                st.rerun()
-        
-        st.stop() # Interrompe o fluxo para que o chat_input não apareça
-
-    # 5.3. Exibir Pergunta de Texto (st.chat_input)
-    elif current_step["type"] == "input":
-        st.chat_message("assistant").write(current_step["question"])
-        # A lógica para capturar a resposta está abaixo, no st.chat_input
-
-
-# 5.4. Captura a interação do usuário (apenas para type="input")
-if prompt := st.chat_input("Digite sua resposta aqui..."):
-    
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
-
-    if st.session_state.pdi_state < NUM_FLOW_STEPS:
-        # Aumenta o estado se a resposta foi uma entrada de texto
-        st.session_state.pdi_state += 1
-        
-        if st.session_state.pdi_state < NUM_FLOW_STEPS:
-            st.rerun() 
-        else:
-            # Transição final para o Chat Ativo
-            with st.chat_message("assistant"):
-                st.markdown("✅ **Formulário inicial completo!** O Mentor de Carreira já está analisando suas respostas. Por favor, aguarde enquanto ele processa a primeira análise e inicia a fase de identificação de *Gaps*.")
-                
-            final_prompt_to_gemini = st.session_state.messages[-1]['content']
-            
-            with st.chat_message("assistant"):
-                response = generate_gemini_response(final_prompt_to_gemini, gemini_api_key)
-                if response:
-                    full_response = response.text
-                    st.markdown(full_response)
-                    st.session_state.messages.append({"role": "model", "content": full_response})
-                else:
-                    st.session_state.messages.pop()
-    else:
-        # 5.5. Chat Ativo (Gemini assume)
-        with st.chat_message("assistant"):
-            response = generate_gemini_response(prompt, gemini_api_key)
-            
-            if response:
-                full_response = response.text
-                st.markdown(full_response)
-                
-                st.session_state.messages.append({"role": "model", "content": full_response})
-            else:
-                st.session_state.messages.pop()
+            # Chama a função de submit que irá atualizar o estado e recarregar
+            st.form_submit_button(
+                "Confirmar e Continuar", 
+                on_click=submit_form, 
+                kwargs={'key': current_step["key"], 'question': current_step["question"]}
+            )
