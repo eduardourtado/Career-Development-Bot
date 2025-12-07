@@ -166,35 +166,51 @@ def generate_summary(history_messages, api_key):
     except Exception as e: 
         return f"Ocorreu um erro inesperado ao gerar resumo: {e}"
 
-# Função 1: Gera o PDF a partir de um texto formatado
-def generate_pdf_bytes(content_text, title):
-    """Gera o PDF a partir de um texto string, usando fpdf2."""
+# --- FUNÇÃO PRINCIPAL DE GERAÇÃO DE PDF (CORRIGIDA E ROBUSTA) ---
+def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
+    """Gera o PDF com layout escuro, personalizado e estruturado.
+    Aceita lista de tuplas (transcrição) ou string (resumo)."""
     
-    # Cria o objeto PDF (usando o FPDF importado de fpdf.fpdf)
-    try:
-        pdf = FPDF() 
-    except NameError:
-        # Se houver falha na importação, tenta importar novamente
-        from fpdf.fpdf import FPDF as FPDF_Fallback
-        pdf = FPDF_Fallback()
-
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
     
-    # Título
-    pdf.set_font("Helvetica", style="B", size=16)
-    pdf.cell(0, 10, title, ln=1, align="C")
-    pdf.set_font("Helvetica", size=10)
-    pdf.cell(0, 5, f"Data da Conversa: {st.session_state.start_time}", ln=1)
-    pdf.ln(5)
+    # --- 1. Fundo Preto (HACK) ---
+    pdf.set_fill_color(0, 0, 0) # Preto RGB
+    pdf.rect(0, 0, pdf.w, pdf.h, 'F') # Desenha um retângulo preto em toda a página
+
+    # --- 2. Cabeçalho Personalizado (Branco) ---
+    pdf.set_text_color(255, 255, 255) # Branco
+    pdf.set_font("Helvetica", style="B", size=18)
+    pdf.cell(0, 10, "🎯 Mentor de PDI Inteligente (Gemini)", ln=1, align="C")
     
-    # Conteúdo (usando multi_cell para quebras de linha automáticas)
-    pdf.set_font("Helvetica", size=11)
-    # A biblioteca FPDF precisa de um encoding que suporte os caracteres
-    pdf.multi_cell(0, 6, content_text.encode('latin-1', 'replace').decode('latin-1'))
+    pdf.set_font("Helvetica", style="I", size=12)
+    pdf.cell(0, 7, title_suffix, ln=1, align="C")
+    
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(0, 5, f"Data: {st.session_state.start_time}", ln=1, align="C")
+    pdf.ln(8)
+    
+    # --- 3. Conteúdo ---
+    
+    if is_summary:
+        # Modo Resumo (espera string)
+        pdf.set_text_color(255, 255, 255) 
+        pdf.set_font("Helvetica", size=11)
         
-    # Salva o PDF como bytes
-    return pdf.output(dest='S').encode('latin-1')
+        clean_summary = clean_and_encode_text(content_data)
+        
+        # MUDANÇA CRÍTICA: Força a conversão para bytes seguros ANTES de multi_cell
+        pdf.multi_cell(0, 6, clean_summary.encode('latin-1', 'replace').decode('latin-1'))
+    else:
+        # Modo Transcrição (espera lista de tuplas)
+        pdf_print_content(pdf, content_data)
+        
+    # --- 4. Saída Final (VERSÃO ESTÁVEL) ---
+    # CORREÇÃO CRÍTICA: Adiciona 'replace' no encode final para evitar UnicodeEncodeError
+    return pdf.output(dest='S').encode('latin-1', 'replace')
+
+
 # Função que executa o submit do formulário de seleção
 def submit_form(key, question):
     selected_option = st.session_state[f'select_{st.session_state.pdi_state}']
@@ -358,7 +374,8 @@ st.sidebar.subheader("🗂️ Download do Histórico")
 
 # Transcrição Completa
 transcript_data = format_transcript_data(st.session_state.messages)
-pdf_full = generate_pdf_bytes(transcript_data, "Transcrição Completa", is_summary=False)
+# Chama a função no modo de Transcrição (is_summary=False)
+pdf_full = generate_pdf_bytes(transcript_data, "Transcrição Completa", is_summary=False) 
 
 st.sidebar.download_button(
     label="1️⃣ Transcrição Completa (PDF)",
@@ -380,6 +397,7 @@ if st.sidebar.button("2️⃣ Gerar Resumo (PDF)"):
              st.error(summary_text)
         else:
             # O Resumo é uma string simples, o PDF precisa saber que é um resumo
+            # Chama a função no modo de Resumo (is_summary=True)
             pdf_summary = generate_pdf_bytes(summary_text, "Resumo da Análise (Gemini)", is_summary=True)
             
             # Reexibe o botão com os dados do PDF
