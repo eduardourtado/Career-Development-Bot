@@ -3,7 +3,7 @@ import os
 from google import genai
 from google.genai.errors import APIError
 from google.genai.types import Content, Part
-from fpdf.fpdf import FPDF
+from fpdf.fpdf import FPDF # Importação mais explícita para evitar conflitos
 from datetime import datetime
 
 # --- Função de Limpeza de Estado ---
@@ -124,76 +124,105 @@ if "messages" not in st.session_state:
 
 # --- FUNÇÕES DE GERAÇÃO E DOWNLOAD ---
 
-# Função 1: Gera o PDF a partir de um texto formatado
-def generate_pdf_bytes(content_text, title):
-    """Gera o PDF a partir de um texto string, usando fpdf."""
+def get_user_name():
+    """Busca o nome preferido do usuário no histórico da conversa."""
+    name_question = "Como você preferiria que eu te chamasse?"
     
-    # Cria o objeto PDF
+    for msg in st.session_state.messages:
+        if msg["role"] == "user" and name_question in msg["content"]:
+            # Espera um formato como: "Pergunta: Resposta"
+            try:
+                name = msg["content"].split(':')[-1].strip()
+                if name:
+                    return name
+            except:
+                pass
+    return "Usuário(a)" # Fallback
+
+def format_transcript_data(messages):
+    """Formata o histórico de mensagens em uma lista de tuplas (role, content)."""
+    data = []
+    
+    user_name = get_user_name()
+    
+    for msg in messages[1:]:
+        role = "Mentor" if msg["role"] == "model" else user_name
+        data.append((role, msg["content"]))
+    
+    return data
+
+def pdf_print_content(pdf, data):
+    """Imprime o conteúdo formatado no PDF com cores e negrito."""
+    
+    # Define as cores
+    MENTOR_BLUE = (0, 100, 200)   # Azul
+    USER_GREEN = (0, 150, 0)     # Verde
+    WHITE = (255, 255, 255)      # Branco
+    
+    for role, content in data:
+        # Define a cor do papel e do texto para o cabeçalho do turno
+        if role == "Mentor":
+            pdf.set_text_color(*MENTOR_BLUE)
+            pdf.set_font("Helvetica", style="B", size=11)
+        else:
+            pdf.set_text_color(*USER_GREEN)
+            pdf.set_font("Helvetica", style="B", size=11)
+        
+        # Imprime o cabeçalho do turno
+        pdf.cell(0, 8, f"🗣️ {role}:", ln=1)
+        
+        # Prepara o conteúdo
+        # Garante que o conteúdo seja tratado como texto simples e limpo
+        clean_content = content.replace("`", "'").replace("*", "")
+        
+        # Define a cor do texto para o conteúdo (BRANCO)
+        pdf.set_text_color(*WHITE)
+        pdf.set_font("Helvetica", size=10)
+        
+        # Imprime o conteúdo
+        pdf.multi_cell(0, 5, clean_content.encode('latin-1', 'replace').decode('latin-1'))
+        
+        pdf.ln(2) # Espaço entre as mensagens
+
+def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
+    """Gera o PDF com layout escuro, personalizado e estruturado."""
+    
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
     
-    # Título
-    pdf.set_font("Helvetica", style="B", size=16)
-    pdf.cell(0, 10, title, ln=1, align="C")
-    pdf.set_font("Helvetica", size=10)
-    pdf.cell(0, 5, f"Data da Conversa: {st.session_state.start_time}", ln=1)
-    pdf.ln(5)
+    # --- 1. Fundo Preto (HACK) ---
+    pdf.set_fill_color(0, 0, 0) # Preto RGB
+    pdf.rect(0, 0, pdf.w, pdf.h, 'F') # Desenha um retângulo preto em toda a página
+
+    # --- 2. Cabeçalho Personalizado (Branco) ---
+    pdf.set_text_color(255, 255, 255) # Branco
+    pdf.set_font("Helvetica", style="B", size=18)
+    pdf.cell(0, 10, "🎯 Mentor de PDI Inteligente (Gemini)", ln=1, align="C")
     
-    # Conteúdo (usando multi_cell para quebras de linha automáticas)
-    pdf.set_font("Helvetica", size=11)
-    # A biblioteca FPDF precisa de um encoding que suporte os caracteres
-    pdf.multi_cell(0, 6, content_text.encode('latin-1', 'replace').decode('latin-1'))
+    pdf.set_font("Helvetica", style="I", size=12)
+    pdf.cell(0, 7, title_suffix, ln=1, align="C")
+    
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(0, 5, f"Data: {st.session_state.start_time}", ln=1, align="C")
+    pdf.ln(8)
+    
+    # --- 3. Conteúdo ---
+    
+    if is_summary:
+        # Para Resumo, imprime o texto diretamente, garantindo limpeza de símbolos
+        pdf.set_text_color(255, 255, 255) # Branco
+        pdf.set_font("Helvetica", size=11)
+        
+        # O Resumo é passado como uma string simples
+        clean_summary = content_data.replace("`", "'").replace("*", "") 
+        pdf.multi_cell(0, 6, clean_summary.encode('latin-1', 'replace').decode('latin-1'))
+    else:
+        # Para Transcrição, usa a função de impressão colorida
+        pdf_print_content(pdf, content_data)
         
     # Salva o PDF como bytes
     return pdf.output(dest='S').encode('latin-1')
-
-# Função 2: Formata a transcrição completa para texto (usada para o PDF completo)
-def format_transcript_text(messages):
-    """Formata o histórico de mensagens (excluindo o system prompt) em uma string TXT."""
-    text_lines = []
-    
-    for msg in messages[1:]:
-        role = "Mentor" if msg["role"] == "model" else "Usuário"
-        text_lines.append(f"\n--- {role.upper()} ---\n")
-        text_lines.append(msg["content"])
-    
-    return "\n".join(text_lines)
-
-
-# Função 3: Gera o resumo da conversa (cached para evitar API call duplicada)
-@st.cache_data(show_spinner="Gerando Resumo da Conversa com o Gemini...")
-def generate_summary(history_messages, api_key):
-    """Gera uma síntese da conversa usando o Gemini."""
-    
-    if not api_key: 
-        return "Erro: Chave GEMINI_API_KEY não configurada."
-        
-    try:
-        client = genai.Client(api_key=api_key)
-        
-        # Cria a lista de mensagens no formato da API (Content)
-        history_contents = []
-        for m in history_messages[1:]: # Ignora o system prompt [0]
-            role = 'user' if m['role'] == 'user' else 'model'
-            content_obj = Content(role=role, parts=[Part.from_text(text=m['content'])]) 
-            history_contents.append(content_obj)
-        
-        # Adiciona o prompt de resumo
-        summary_prompt = "Você é um Analista de Dados. Dada a conversa a seguir entre um Mentor de PDI e um Usuário, gere um resumo profissional e conciso dos pontos principais, focando nas respostas do usuário (experiências e objetivos) e na análise/dúvidas do Mentor."
-        
-        history_contents.append(Content(role='user', parts=[Part.from_text(text=summary_prompt)]))
-        
-        response = client.models.generate_content(
-            model='gemini-2.5-flash', 
-            contents=history_contents
-        )
-        return response.text
-    
-    except APIError as e: 
-        return f"Erro na API do Gemini ao gerar resumo: {e}"
-    except Exception as e: 
-        return f"Ocorreu um erro inesperado ao gerar resumo: {e}"
 
 
 # Função que executa o submit do formulário de seleção
@@ -251,7 +280,6 @@ def generate_gemini_response(prompt, api_key):
             model='gemini-2.5-flash', 
             contents=history_messages, 
             config={'system_instruction': system_prompt} 
-            # ❌ NÃO USAR: stream=True
         )
         return response
     
@@ -273,12 +301,11 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
     
     current_step = QUESTION_FLOW[st.session_state.pdi_state]
     
-    # 5.1. Exibir Introdução E SALVAR NO HISTÓRICO (para evitar duplicação)
+    # 5.1. Exibir Introdução E SALVAR NO HISTÓRICO (correção de duplicação)
     if current_step["type"] == "intro":
         intro_text = current_step["text"]
         st.chat_message("assistant").write(intro_text)
         
-        # Salva a introdução SE ELA NÃO FOR A ÚLTIMA (correção de duplicação)
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != intro_text:
             st.session_state.messages.append({"role": "model", "content": intro_text})
         
@@ -290,7 +317,6 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
         question_text = current_step["question"]
         st.chat_message("assistant").write(question_text)
         
-        # Salva a pergunta SE ELA NÃO FOR A ÚLTIMA SALVA (correção de duplicação)
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != question_text:
             st.session_state.messages.append({"role": "model", "content": question_text})
 
@@ -312,7 +338,6 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
         question_text = current_step["question"]
         st.chat_message("assistant").write(question_text)
 
-        # Salva a pergunta SE ELA NÃO FOR A ÚLTIMA SALVA (correção de duplicação)
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != question_text:
             st.session_state.messages.append({"role": "model", "content": question_text})
 
@@ -367,9 +392,9 @@ st.sidebar.markdown("---")
 # Geração de PDF (visível o tempo todo)
 st.sidebar.subheader("🗂️ Download do Histórico")
 
-# --- Opção 1: Transcrição Completa ---
-full_transcript_text = format_transcript_text(st.session_state.messages)
-pdf_full = generate_pdf_bytes(full_transcript_text, "Transcrição Completa do PDI")
+# Transcrição Completa
+transcript_data = format_transcript_data(st.session_state.messages)
+pdf_full = generate_pdf_bytes(transcript_data, "Transcrição Completa", is_summary=False)
 
 st.sidebar.download_button(
     label="1️⃣ Transcrição Completa (PDF)",
@@ -378,8 +403,7 @@ st.sidebar.download_button(
     mime="application/pdf"
 )
 
-# --- Opção 2: Resumo (Síntese Gemini) ---
-# A função de resumo só é chamada quando o botão é pressionado (graças ao cache)
+# Resumo
 if st.sidebar.button("2️⃣ Gerar Resumo (PDF)"):
     
     if st.session_state.pdi_state < NUM_FLOW_STEPS:
@@ -388,11 +412,11 @@ if st.sidebar.button("2️⃣ Gerar Resumo (PDF)"):
         # Gera o resumo usando a função cacheada
         summary_text = generate_summary(st.session_state.messages, gemini_api_key)
         
-        # Verifica se houve erro na geração do resumo
+        # O Resumo é uma string simples, o PDF precisa saber que é um resumo
         if summary_text.startswith(("Erro:", "Ocorreu um erro")):
              st.error(summary_text)
         else:
-            pdf_summary = generate_pdf_bytes(summary_text, "Resumo da Análise PDI (Gemini)")
+            pdf_summary = generate_pdf_bytes(summary_text, "Resumo da Análise (Gemini)", is_summary=True)
             
             # Reexibe o botão com os dados do PDF
             st.sidebar.download_button(
