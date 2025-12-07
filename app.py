@@ -176,7 +176,7 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
     
     # CORREÇÃO CRÍTICA: Inicializa o FPDF com encoding='UTF-8' para suportar
     # acentos e caracteres especiais, evitando o erro interno do Latin-1.
-    pdf = FPDF(unit='mm', format='A4', orientation='P', encoding='UTF-8')
+    pdf = FPDF(unit='mm', format='A4', orientation='P')
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
     
