@@ -13,6 +13,7 @@ st.markdown("Olá! Sou seu assistente de carreira. Vamos construir seu **Plano d
 # --- CSS para Layout Preto/Branco (Mantido) ---
 st.markdown("""
 <style>
+    /* Estilos de Cores */
     .stApp {background-color: #000000; color: #FFFFFF;}
     h1, h2, h3, h4, p, .stMarkdown {color: #FFFFFF !important;}
     .block-container {padding-top: 2rem; padding-bottom: 0rem; padding-left: 2rem; padding-right: 2rem; max-width: 800px;}
@@ -20,22 +21,32 @@ st.markdown("""
     .stTextInput > div > div > input, .stTextInput > label {
         color: #FFFFFF; background-color: #000000; border: 1px solid #FFFFFF; border-radius: 8px;
     }
-    .stButton>button {display: none;} /* Oculta todos os st.button simples */
+    /* Oculta st.button simples (exceto os do formulário que aparecerão) */
+    .stButton>button {display: none;}
+    /* Oculta elementos do Streamlit */
     header {visibility: hidden; height: 0px;}
     footer {visibility: hidden; height: 0px;}
     #MainMenu {visibility: hidden;}
+    
+    /* Estilo do botão de formulário para que ele apareça */
+    div.stButton > button {
+        display: inline-block; /* Garante que o botão apareça dentro do formulário */
+        color: white; 
+        background-color: #4A90E2; 
+        border: none;
+        border-radius: 5px; 
+        padding: 10px 15px;
+        cursor: pointer;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 
 # --- 2. Variáveis de Estado e Perguntas PERSONALIZADAS ---
-
-# Lista de perguntas e introduções para serem feitas sequencialmente.
-# O tipo 'input' usa st.chat_input, o tipo 'select' usa st.radio.
 QUESTION_FLOW = [
     # Bloco 1: Configurações (st.radio)
     {"type": "intro", "text": "Antes de começarmos, vamos configurar o **idioma e o estilo de resposta** do nosso Mentor. Isso garante uma comunicação perfeita!"},
-    {"type": "select", "question": "Em qual idioma você prefere que o Mentor de PDI responda? (Obrigatório para o System Prompt)", 
+    {"type": "select", "question": "Em qual idioma você prefere que o Mentor de PDI responda?", 
      "key": "lang", "options": ["Português", "Inglês", "Espanhol"]},
     {"type": "select", "question": "Qual tom/estilo de resposta você prefere do seu Mentor?", 
      "key": "style", "options": ["Profissional e Objetivo", "Empático e Encorajador", "Direto e Desafiador"]},
@@ -70,9 +81,9 @@ gemini_api_key = os.environ.get("GEMINI_API_KEY")
 
 # --- 4. Lógica de Memória (Histórico) ---
 if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "system", "content": ""}] # System prompt será montado
+    st.session_state["messages"] = [{"role": "system", "content": ""}] 
     st.session_state.pdi_state = 0 
-    st.session_state.configs = {} # Armazena as respostas de select (idioma, estilo)
+    st.session_state.configs = {} 
 
 
 # Função para montar o System Prompt baseado nas configurações
@@ -80,7 +91,6 @@ def build_system_prompt():
     lang = st.session_state.configs.get('lang', 'Português')
     style = st.session_state.configs.get('style', 'Profissional e Objetivo')
     
-    # Este prompt será injetado no índice 0 do histórico antes da chamada final ao Gemini
     return f"""
         Você é um Mentor de Carreira Sênior especializado em criar Planos de Desenvolvimento Individual (PDI).
         
@@ -95,16 +105,16 @@ def build_system_prompt():
         2. INICIE A ANÁLISE: Após a validação, comece a etapa 2 do PDI: 'Identificar Gaps (O que falta aprender?)'. Baseie-se nas experiências passadas e nos objetivos futuros.
         """
 
-# Função para gerar o conteúdo usando o Gemini (mantida a lógica estável)
+# Função para gerar o conteúdo usando o Gemini
 def generate_gemini_response(prompt, api_key):
-    # Garante que o system prompt é o primeiro item
     st.session_state.messages[0]['content'] = build_system_prompt()
     system_prompt = st.session_state.messages[0]['content']
 
-    if not api_key: st.error("Erro de configuração: A chave GEMINI_API_KEY não foi encontrada.") ; return None
+    if not api_key: st.error("Erro de configuração: A chave GEMINI_API_KEY não foi encontrada."); return None
         
     try:
         client = genai.Client(api_key=api_key)
+        
         history_messages = []
         for m in st.session_state.messages[1:]:
             role = 'user' if m['role'] == 'user' else 'model'
@@ -113,8 +123,11 @@ def generate_gemini_response(prompt, api_key):
         
         history_messages.append(Content(role='user', parts=[Part.from_text(text=prompt)]))
 
+        # Removida a tentativa de usar 'stream=True' ou 'response_iterator'
         response = client.models.generate_content(
-            model='gemini-2.5-flash', contents=history_messages, config={'system_instruction': system_prompt} 
+            model='gemini-2.5-flash', 
+            contents=history_messages, 
+            config={'system_instruction': system_prompt} 
         )
         return response
     
@@ -131,7 +144,6 @@ for msg in st.session_state.messages:
 
 # --- 5. Lógica da Máquina de Estados (Controle do Fluxo) ---
 
-# Checa se o fluxo de perguntas não terminou
 if st.session_state.pdi_state < NUM_FLOW_STEPS:
     
     current_step = QUESTION_FLOW[st.session_state.pdi_state]
@@ -142,23 +154,24 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
         st.session_state.pdi_state += 1
         st.rerun()
 
-    # 5.2. Exibir Múltipla Escolha (st.radio)
+    # 5.2. Exibir Múltipla Escolha (st.radio) - USANDO st.form PARA ESTABILIDADE
     elif current_step["type"] == "select":
         st.chat_message("assistant").write(current_step["question"])
         
-        # Cria um contêiner para posicionar o radio button e o botão de avançar
-        with st.container():
-            selected_option = st.radio("Selecione uma opção:", current_step["options"], key=f'select_{st.session_state.pdi_state}')
+        # O formulário garante que o radio button e o botão de envio atuem como uma única unidade
+        with st.form(key=f'form_{st.session_state.pdi_state}'):
+            # Adiciona um rótulo vazio para melhorar o alinhamento
+            selected_option = st.radio(" ", current_step["options"], key=f'select_{st.session_state.pdi_state}')
             
-            # Botão personalizado (usa markdown para aparecer, pois o st.button está escondido)
-            # O texto do botão deve ser clicável.
-            if st.markdown(f'<a href="#" target="_self"><button style="color:white; background-color:#4A90E2; border-radius:5px; padding:10px;">Confirmar e Continuar</button></a>', unsafe_allow_html=True):
-                # Armazena a configuração
+            # O st.form_submit_button funciona mesmo com o st.button oculto pelo CSS
+            if st.form_submit_button("Confirmar e Continuar"):
+                # 1. Armazena a configuração
                 st.session_state.configs[current_step["key"]] = selected_option
                 
-                # Registra a resposta no histórico como se fosse o usuário
+                # 2. Registra a resposta no histórico como se fosse o usuário
                 st.session_state.messages.append({"role": "user", "content": f"{current_step['question']}: {selected_option}"})
                 
+                # 3. Avança o estado e recarrega
                 st.session_state.pdi_state += 1 
                 st.rerun()
         
@@ -187,7 +200,6 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
             with st.chat_message("assistant"):
                 st.markdown("✅ **Formulário inicial completo!** O Mentor de Carreira já está analisando suas respostas. Por favor, aguarde enquanto ele processa a primeira análise e inicia a fase de identificação de *Gaps*.")
                 
-            # Chama o Gemini com a última resposta como prompt inicial
             final_prompt_to_gemini = st.session_state.messages[-1]['content']
             
             with st.chat_message("assistant"):
@@ -206,6 +218,7 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
             if response:
                 full_response = response.text
                 st.markdown(full_response)
+                
                 st.session_state.messages.append({"role": "model", "content": full_response})
             else:
                 st.session_state.messages.pop()
