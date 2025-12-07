@@ -1,5 +1,5 @@
 import streamlit as st
-import os # Necessário para buscar a chave secreta
+import os 
 from google import genai
 from google.genai.errors import APIError
 from google.genai.types import Content, Part
@@ -7,8 +7,14 @@ from google.genai.types import Content, Part
 # --- 1. Configuração da Interface ---
 st.set_page_config(page_title="Mentor de Carreira PDI (Gemini)", page_icon="🎯", layout="centered")
 
-st.title("Mentor de PDI Inteligente (Gemini)")
+st.title("🎯 Mentor de PDI Inteligente (Gemini)")
 st.markdown("Olá! Sou seu assistente de carreira. Vamos construir seu **Plano de Desenvolvimento Individual** juntos. Por favor, responda o formulário inicial para um planejamento eficaz.")
+
+# Move o botão Limpar Conversa para a área principal
+if st.button("Limpar Conversa e Recomeçar"):
+    st.session_state.messages = []
+    st.session_state.pdi_state = 0
+    st.rerun()
 
 st.markdown("""
 <style>
@@ -43,22 +49,10 @@ FORM_QUESTIONS = [
     # 4. Objetivos profissionais
     "11/11. Quais são os seus principais objetivos profissionais?"
 ]
-NUM_QUESTIONS = len(FORM_QUESTIONS) # Total de 11 perguntas
+NUM_QUESTIONS = len(FORM_QUESTIONS)
 
-# --- 3. Barra Lateral para Configuração ---
-with st.sidebar:
-    st.header("Configurações")
-    st.write("A chave da API está sendo carregada de forma segura pelo servidor (Secrets).")
-    
-    # O INPUT DA CHAVE FOI REMOVIDO PARA OCULTAR DO USUÁRIO FINAL
-    
-    if st.button("Limpar Conversa"):
-        st.session_state.messages = []
-        st.session_state.pdi_state = 0
-        st.rerun()
-
-# --- CARREGAMENTO SECRETO DA CHAVE ---
-# A chave é buscada da variável de ambiente definida no Streamlit Cloud (GEMINI_API_KEY)
+# --- 3. Carregamento Secreto da Chave ---
+# A chave é buscada da variável de ambiente definida no ambiente de hospedagem (Secrets)
 gemini_api_key = os.environ.get("GEMINI_API_KEY")
 
 # --- 4. Lógica de Memória (Histórico) ---
@@ -84,6 +78,7 @@ if "messages" not in st.session_state:
 # Função para gerar o conteúdo usando o Gemini
 def generate_gemini_response(prompt, api_key):
     if not api_key:
+        # Mensagem de erro que só o desenvolvedor verá (em produção)
         st.error("Erro de configuração: A chave GEMINI_API_KEY não foi encontrada no ambiente de hospedagem.")
         return None
         
@@ -134,7 +129,6 @@ for msg in st.session_state.messages:
 # 5.1. Exibir a próxima pergunta do formulário
 if st.session_state.pdi_state < NUM_QUESTIONS:
     next_question = FORM_QUESTIONS[st.session_state.pdi_state]
-    # O bot sempre fala a próxima pergunta no início
     st.chat_message("assistant").write(next_question)
 
 
@@ -147,25 +141,19 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
 
     # Lógica de Transição de Estado:
     if st.session_state.pdi_state < NUM_QUESTIONS:
-        # Estamos no meio do formulário. Aumenta o estado para a próxima pergunta.
         st.session_state.pdi_state += 1
         
         if st.session_state.pdi_state < NUM_QUESTIONS:
-            # Recarrega para mostrar a próxima pergunta
             st.rerun() 
         else:
             # Transição para o chat ativo (Formulário completo)
             
-            # Exibir uma mensagem de transição
             with st.chat_message("assistant"):
                 st.markdown("✅ **Formulário inicial completo!** O Mentor de Carreira já está analisando suas 11 respostas. Por favor, aguarde enquanto ele processa a primeira análise e inicia a fase de identificação de *Gaps*.")
                 
-            # Na próxima execução, o fluxo cairá no bloco ELSE (Chat Ativo)
-            # Para forçar a primeira resposta do Gemini sem nova interação do usuário:
-            # Vamos reutilizar a última resposta do usuário como o prompt de ativação.
+            # Chama o Gemini para a primeira resposta da fase de análise
             final_prompt_to_gemini = st.session_state.messages[-1]['content']
             
-            # Chama o Gemini com a última resposta como prompt inicial
             with st.chat_message("assistant"):
                 response = generate_gemini_response(final_prompt_to_gemini, gemini_api_key)
                 if response:
@@ -185,7 +173,6 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
                 full_response = response.text
                 st.markdown(full_response)
                 
-                # Salva a resposta do bot na memória
                 st.session_state.messages.append({"role": "model", "content": full_response})
             else:
                 st.session_state.messages.pop()
