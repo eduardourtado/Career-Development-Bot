@@ -34,20 +34,14 @@ st.markdown("""
         color: #FFFFFF !important; 
     }
     
-    /* 6. Oculta st.button simples (só aparecem os de formulário) */
-    /* Remove esta regra para evitar conflito com botões de download e formulário,
-       e usa a regra 8 para estilizar apenas os botões dentro do formulário */
-    /* .stButton>button {display: none;} */
-    
     /* 7. OCULTA BARRAS DE CABEÇALHO E RODAPÉ */
     header {visibility: hidden; height: 0px;}
     footer {visibility: hidden; height: 0px;}
     #MainMenu {visibility: hidden;}
     
     /* 8. Estilo do botão de formulário e download (FUNDO AZUL) */
+    /* Esta regra é para botões que não estão no formulário ou em hover */
     div.stButton > button {
-        display: inline-block; 
-        color: white; /* Texto Branco no botão normal (download e sidebar) */
         background-color: #4A90E2; 
         border: none;
         border-radius: 5px; 
@@ -55,17 +49,18 @@ st.markdown("""
         cursor: pointer;
     }
     
-    /* 9. CORREÇÃO DE ILEGIBILIDADE DO BOTÃO DE FORMULÁRIO */
-    /* Força o texto dentro do botão "Confirmar e Continuar" a ser branco, 
-       usando o seletor mais específico do st.form. */
-    div[data-testid="stForm"] div.stButton button span {
-        color: #FFFFFF !important; 
+    /* 9. CORREÇÃO DE ILEGIBILIDADE DO BOTÃO DE FORMULÁRIO (TEXTO PRETO) */
+    /* FOCA no botão dentro do formulário E FORÇA A COR DO TEXTO para PRETO */
+    div[data-testid="stForm"] div.stButton button {
+        color: #000000 !important; /* Texto Preto no botão do formulário */
+        background-color: #FFFFFF !important; /* Fundo Branco (para garantir contraste) */
+        border: 1px solid #000000 !important; /* Borda preta para definição */
     }
     
-    /* Se a regra 9 não funcionar, tente esta alternativa para o Streamlit antigo */
-    /* div[data-testid="stForm"] button {
-        color: #FFFFFF !important;
-    } */
+    /* Garante que o span (o texto interno) também seja preto, caso a regra 9 falhe */
+    div[data-testid="stForm"] div.stButton button span {
+        color: #000000 !important; 
+    }
     
 </style>
 """, unsafe_allow_html=True)
