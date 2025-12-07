@@ -18,34 +18,54 @@ if st.button("Limpar Conversa e Recomeçar"):
 
 st.markdown("""
 <style>
-    /* 1. Largura Máxima da Área de Conteúdo */
+    /* 1. Cores Globais - Preto e Verde Claro */
+    .stApp {
+        background-color: #000000; /* Fundo Preto */
+        color: #00FF00; /* Texto Verde Vibrante (Hacker Green) */
+    }
+    
+    /* 2. Cor dos Títulos e Textos Principais */
+    h1, h2, h3, h4, p, .stMarkdown {
+        color: #00FF00 !important;
+    }
+    
+    /* 3. Largura Máxima da Área de Conteúdo */
     .block-container {
         padding-top: 2rem;
         padding-bottom: 0rem;
         padding-left: 2rem;
         padding-right: 2rem;
-        max-width: 800px; /* Limita a largura do chat */
+        max-width: 800px;
     }
     
-    /* 2. Estilo das Caixas de Mensagem (Chat Bubbles) */
+    /* 4. Estilo das Caixas de Mensagem (Chat Bubbles) */
     .stChatMessage {
         border-radius: 15px; 
         padding: 15px;
-        background-color: #F0F2F6; /* Fundo cinza claro para a bolha do chat */
+        background-color: #1A1A1A; /* Fundo cinza escuro para a bolha do chat */
+        color: #00FF00 !important; /* Texto Verde Claro dentro da bolha */
+        border: 1px solid #008000; /* Borda Verde Escura para o chat */
+    }
+
+    /* 5. Cor do Input de Texto (Onde o usuário digita) */
+    .stTextInput > div > div > input {
+        color: #00FF00;
+        background-color: #000000;
+        border: 1px solid #00FF00; /* Borda verde */
+    }
+
+    /* 6. Cor do Botão Limpar Conversa */
+    .stButton>button {
+        color: #00FF00;
+        background-color: #1A1A1A;
+        border: 1px solid #00FF00;
     }
     
-    /* 3. Ocultar o Menu de Hambúrguer (☰) e o Rodapé 'Made with Streamlit' */
+    /* 7. Ocultar o Menu de Hambúrguer (☰) e o Rodapé 'Made with Streamlit' */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    
-    /* 4. Título Principal (Opcional) */
-    h1 {
-        color: #4A90E2; /* Azul */
-        text-align: center;
-    }
 </style>
 """, unsafe_allow_html=True)
-
 
 # --- 2. Variáveis de Estado e Perguntas PERSONALIZADAS ---
 
