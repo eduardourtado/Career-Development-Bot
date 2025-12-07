@@ -18,15 +18,15 @@ if st.button("Limpar Conversa e Recomeçar"):
 
 st.markdown("""
 <style>
-    /* 1. Cores Globais - Preto e Verde Claro */
+    /* 1. Cores Globais - Preto e Branco */
     .stApp {
         background-color: #000000; /* Fundo Preto */
-        color: #00FF00; /* Texto Verde Vibrante (Hacker Green) */
+        color: #FFFFFF; /* Texto Branco */
     }
     
     /* 2. Cor dos Títulos e Textos Principais */
     h1, h2, h3, h4, p, .stMarkdown {
-        color: #00FF00 !important;
+        color: #FFFFFF !important; /* Força a cor branca para todo o texto */
     }
     
     /* 3. Largura Máxima da Área de Conteúdo */
@@ -43,22 +43,25 @@ st.markdown("""
         border-radius: 15px; 
         padding: 15px;
         background-color: #1A1A1A; /* Fundo cinza escuro para a bolha do chat */
-        color: #00FF00 !important; /* Texto Verde Claro dentro da bolha */
-        border: 1px solid #008000; /* Borda Verde Escura para o chat */
+        color: #FFFFFF !important; /* Texto Branco dentro da bolha */
+        border: 1px solid #444444; /* Borda cinza escura sutil */
     }
 
-    /* 5. Cor do Input de Texto (Onde o usuário digita) */
-    .stTextInput > div > div > input {
-        color: #00FF00;
-        background-color: #000000;
-        border: 1px solid #00FF00; /* Borda verde */
+    /* 5. Estilo da Barra de Input de Mensagem (Onde o usuário digita) */
+    /* Este bloco customiza a caixa de texto */
+    .stTextInput > div > div > input,
+    .stTextInput > label {
+        color: #FFFFFF; /* Fonte Branca */
+        background-color: #000000; /* Fundo Preto */
+        border: 1px solid #FFFFFF; /* Contorno/Borda Branca */
+        border-radius: 8px; /* Cantos arredondados */
     }
 
     /* 6. Cor do Botão Limpar Conversa */
     .stButton>button {
-        color: #00FF00;
+        color: #FFFFFF;
         background-color: #1A1A1A;
-        border: 1px solid #00FF00;
+        border: 1px solid #FFFFFF;
     }
     
     /* 7. Ocultar o Menu de Hambúrguer (☰) e o Rodapé 'Made with Streamlit' */
