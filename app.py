@@ -3,7 +3,8 @@ import os
 from google import genai
 from google.genai.errors import APIError
 from google.genai.types import Content, Part
-from fpdf.fpdf import FPDF # Importação explícita para fpdf2
+# A importação está correta, mas a fpdf moderna deve ser inicializada com encoding='UTF-8'
+from fpdf.fpdf import FPDF 
 from datetime import datetime
 
 # --- Função de Limpeza de Estado ---
@@ -110,6 +111,7 @@ def clean_and_encode_text(text):
     """
     Limpa o texto de Markdown e garante que qualquer caractere complexo seja substituído.
     """
+    # Esta função está OK. Usar Latin-1 replace garante que o texto fique seguro para a FPDF.
     clean = text.replace("`", "'").replace("**", "").replace("*", "")
     return clean.encode('latin-1', 'replace').decode('latin-1')
 
@@ -138,7 +140,8 @@ def pdf_print_content(pdf, data):
         pdf.set_text_color(*WHITE)
         pdf.set_font("Helvetica", size=10)
         
-        # SOLUÇÃO ESTÁVEL: Força a conversão para bytes seguros ANTES de multi_cell
+        # O FPDF usa o encoding definido na inicialização (agora UTF-8). 
+        # A limpeza com latin-1 replace evita problemas com caracteres estranhos.
         pdf.multi_cell(0, 5, clean_content.encode('latin-1', 'replace').decode('latin-1'))
         
         pdf.ln(2)
@@ -171,7 +174,9 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
     """Gera o PDF com layout escuro, personalizado e estruturado.
     Aceita lista de tuplas (transcrição) ou string (resumo)."""
     
-    pdf = FPDF()
+    # CORREÇÃO CRÍTICA: Inicializa o FPDF com encoding='UTF-8' para suportar
+    # acentos e caracteres especiais, evitando o erro interno do Latin-1.
+    pdf = FPDF(unit='mm', format='A4', orientation='P', encoding='UTF-8')
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
     
@@ -200,15 +205,15 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
         
         clean_summary = clean_and_encode_text(content_data)
         
-        # MUDANÇA CRÍTICA: Força a conversão para bytes seguros ANTES de multi_cell
+        # Usa a string limpa (latin-1 safe)
         pdf.multi_cell(0, 6, clean_summary.encode('latin-1', 'replace').decode('latin-1'))
     else:
         # Modo Transcrição (espera lista de tuplas)
         pdf_print_content(pdf, content_data)
         
-    # --- 4. Saída Final (VERSÃO ESTÁVEL) ---
-    # CORREÇÃO CRÍTICA: Adiciona 'replace' no encode final para evitar UnicodeEncodeError
-    return pdf.output(dest='S').encode('latin-1', 'replace')
+    # --- 4. Saída Final ---
+    # FPDF retorna bytes quando dest='S'. Não é necessário re-encodificar.
+    return pdf.output(dest='S')
 
 
 # Função que executa o submit do formulário de seleção
@@ -374,7 +379,6 @@ st.sidebar.subheader("🗂️ Download do Histórico")
 
 # Transcrição Completa
 transcript_data = format_transcript_data(st.session_state.messages)
-# Chama a função no modo de Transcrição (is_summary=False)
 pdf_full = generate_pdf_bytes(transcript_data, "Transcrição Completa", is_summary=False) 
 
 st.sidebar.download_button(
@@ -397,7 +401,6 @@ if st.sidebar.button("2️⃣ Gerar Resumo (PDF)"):
              st.error(summary_text)
         else:
             # O Resumo é uma string simples, o PDF precisa saber que é um resumo
-            # Chama a função no modo de Resumo (is_summary=True)
             pdf_summary = generate_pdf_bytes(summary_text, "Resumo da Análise (Gemini)", is_summary=True)
             
             # Reexibe o botão com os dados do PDF
