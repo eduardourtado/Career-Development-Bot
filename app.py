@@ -3,13 +3,12 @@ import os
 from google import genai
 from google.genai.errors import APIError
 from google.genai.types import Content, Part
-# A importação está correta, mas a fpdf moderna deve ser inicializada com encoding='UTF-8'
 from fpdf.fpdf import FPDF 
 from datetime import datetime
 
 # --- Função de Limpeza de Estado ---
 def clear_session_state():
-    """Reinicia todas as variáveis de estado da sessão."""
+# ... (código inalterado) ...
     st.session_state["messages"] = [{"role": "system", "content": ""}] 
     st.session_state.pdi_state = 0 
     st.session_state.configs = {} 
@@ -86,6 +85,7 @@ if "messages" not in st.session_state:
 # --- FUNÇÕES DE GERAÇÃO E DOWNLOAD ---
 
 def get_user_name():
+# ... (código inalterado) ...
     """Busca o nome preferido do usuário no histórico da conversa."""
     name_question = "Como você preferiria que eu te chamasse?"
     for msg in st.session_state.messages:
@@ -99,6 +99,7 @@ def get_user_name():
     return "Usuário(a)" 
 
 def format_transcript_data(messages):
+# ... (código inalterado) ...
     """Formata o histórico de mensagens em uma lista de tuplas (role, content)."""
     data = []
     user_name = get_user_name()
@@ -108,6 +109,7 @@ def format_transcript_data(messages):
     return data
 
 def clean_and_encode_text(text):
+# ... (código inalterado) ...
     """
     Limpa o texto de Markdown e garante que qualquer caractere complexo seja substituído.
     """
@@ -116,6 +118,7 @@ def clean_and_encode_text(text):
     return clean.encode('latin-1', 'replace').decode('latin-1')
 
 def pdf_print_content(pdf, data):
+# ... (código inalterado) ...
     """Imprime o conteúdo formatado no PDF com cores e negrito (Solução Estável)."""
     
     MENTOR_BLUE = (0, 100, 200)   
@@ -140,7 +143,6 @@ def pdf_print_content(pdf, data):
         pdf.set_text_color(*WHITE)
         pdf.set_font("Helvetica", size=10)
         
-        # O FPDF usa o encoding definido na inicialização (agora UTF-8). 
         # A limpeza com latin-1 replace evita problemas com caracteres estranhos.
         pdf.multi_cell(0, 5, clean_content.encode('latin-1', 'replace').decode('latin-1'))
         
@@ -148,6 +150,7 @@ def pdf_print_content(pdf, data):
 
 @st.cache_data(show_spinner="Gerando Resumo da Conversa com o Gemini...")
 def generate_summary(history_messages, api_key):
+# ... (código inalterado) ...
     """Gera um resumo da conversa usando o Gemini."""
     if not api_key: return "Erro: Chave GEMINI_API_KEY não configurada."
     try:
@@ -169,13 +172,12 @@ def generate_summary(history_messages, api_key):
     except Exception as e: 
         return f"Ocorreu um erro inesperado ao gerar resumo: {e}"
 
-# --- FUNÇÃO PRINCIPAL DE GERAÇÃO DE PDF (CORRIGIDA E ROBUSTA) ---
+# --- FUNÇÃO PRINCIPAL DE GERAÇÃO DE PDF (CORRIGIDA) ---
 def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
     """Gera o PDF com layout escuro, personalizado e estruturado.
     Aceita lista de tuplas (transcrição) ou string (resumo)."""
     
-    # CORREÇÃO CRÍTICA: Inicializa o FPDF com encoding='UTF-8' para suportar
-    # acentos e caracteres especiais, evitando o erro interno do Latin-1.
+    # Inicializa FPDF sem o argumento 'encoding' para evitar TypeError.
     pdf = FPDF(unit='mm', format='A4', orientation='P')
     pdf.set_auto_page_break(auto=True, margin=20)
     pdf.add_page()
@@ -211,13 +213,15 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
         # Modo Transcrição (espera lista de tuplas)
         pdf_print_content(pdf, content_data)
         
-    # --- 4. Saída Final ---
-    # FPDF retorna bytes quando dest='S'. Não é necessário re-encodificar.
-    return pdf.output(dest='S')
+    # --- 4. Saída Final (Correção Crítica para UnicodeEncodeError) ---
+    # Força a conversão do output para bytes seguros em Latin-1 com 'replace'
+    # para evitar falha na biblioteca FPDF ao tentar codificar caracteres complexos internamente.
+    return pdf.output(dest='S').encode('latin-1', 'replace')
 
 
 # Função que executa o submit do formulário de seleção
 def submit_form(key, question):
+# ... (código inalterado) ...
     selected_option = st.session_state[f'select_{st.session_state.pdi_state}']
     st.session_state.configs[key] = selected_option
     st.session_state.messages.append({"role": "user", "content": f"{question}: {selected_option}"})
@@ -227,6 +231,7 @@ def submit_form(key, question):
 
 # Função para montar o System Prompt baseado nas configurações
 def build_system_prompt():
+# ... (código inalterado) ...
     lang = st.session_state.configs.get('lang', 'Português')
     style = st.session_state.configs.get('style', 'Profissional')
     detail = st.session_state.configs.get('detail', 'Muito Detalhe')
@@ -245,6 +250,7 @@ def build_system_prompt():
 
 # Função para gerar o conteúdo usando o Gemini
 def generate_gemini_response(prompt, api_key):
+# ... (código inalterado) ...
     st.session_state.messages[0]['content'] = build_system_prompt()
     system_prompt = st.session_state.messages[0]['content']
 
