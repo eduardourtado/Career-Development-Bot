@@ -13,6 +13,7 @@ def clear_session_state():
     st.session_state.pdi_state = 0 
     st.session_state.configs = {} 
     st.session_state.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Limpa o cache para que o resumo seja gerado novamente
     if 'generate_summary' in st.session_state:
         del st.session_state['generate_summary']
 
@@ -30,7 +31,36 @@ st.markdown("""
     .stApp {background-color: #000000; color: #FFFFFF;}
     h1, h2, h3, h4, p, .stMarkdown {color: #FFFFFF !important;}
     
-    /* [Restante do CSS Omitido para concisão, mas presente no código original] */
+    /* 2. Largura e Padding */
+    .block-container {padding-top: 2rem; padding-bottom: 0rem; padding-left: 2rem; padding-right: 2rem; max-width: 800px;}
+    
+    /* 3. Estilo das Caixas de Mensagem */
+    .stChatMessage {border-radius: 15px; padding: 15px; background-color: #1A1A1A; color: #FFFFFF !important; border: 1px solid #444444;}
+    
+    /* 4. Estilo da Barra de Input de Mensagem */
+    .stTextInput > div > div > input, .stTextInput > label {
+        color: #FFFFFF; background-color: #000000; border: 1px solid #FFFFFF; border-radius: 8px;
+    }
+    
+    /* 5. CORREÇÃO DE LEGIBILIDADE PARA ST.RADIO E ST.SELECT */
+    .stRadio > label, .stRadio > div > label > div > div > p {
+        color: #FFFFFF !important; 
+    }
+    
+    /* 7. OCULTA BARRAS DE CABEÇALHO E RODAPÉ */
+    header {visibility: hidden; height: 0px;}
+    footer {visibility: hidden; height: 0px;}
+    #MainMenu {visibility: hidden;}
+    
+    /* 8. Estilo padrão para Botões (Download) */
+    div.stButton > button {
+        background-color: #4A90E2; /* Fundo Azul */
+        color: #FFFFFF; /* Texto Branco */
+        border: none;
+        border-radius: 5px; 
+        padding: 10px 15px;
+        cursor: pointer;
+    }
     
     /* 9. ESTILO CRÍTICO PARA O BOTÃO DO FORMULÁRIO (PRETO COM TEXTO BRANCO) */
     div[data-testid="stForm"] div.stButton button {
@@ -51,6 +81,7 @@ st.markdown("""
 
 # --- 2. Variáveis de Estado e Perguntas PERSONALIZADAS ---
 QUESTION_FLOW = [
+    # Bloco 1: Configurações (st.radio)
     {"type": "intro", "text": "Antes de começarmos, vamos configurar o **idioma e o estilo de resposta** do nosso Mentor. Isso garante uma comunicação perfeita!"},
     {"type": "select", "question": "Em qual idioma você prefere que o Mentor de PDI responda?", 
      "key": "lang", "options": ["Português", "Inglês", "Espanhol"]},
@@ -59,15 +90,18 @@ QUESTION_FLOW = [
     {"type": "select", "question": "Você prefere respostas com mais ou menos detalhes?", 
      "key": "detail", "options": ["Muito Detalhe", "Direto ao Ponto"]},
 
+    # Bloco 2: Sobre Você (st.chat_input)
     {"type": "intro", "text": "Ótimo! Agora, começarei fazendo algumas perguntas sobre você. Tudo bem?"},
     {"type": "input", "question": "Como você preferiria que eu te chamasse?"},
     {"type": "input", "question": "Quantos anos você tem?"},
 
+    # Bloco 3: Experiências Educacionais (st.chat_input)
     {"type": "intro", "text": "Perfeito. Agora, gostaria de explorarmos mais detalhes sobre suas **experiências educacionais**."},
     {"type": "input", "question": "Qual foi o maior nível de educação que você já obteve? (Ex: Bacharelado, Mestrado, Pós-doutorado)"},
     {"type": "input", "question": "Em qual instituição você obteve essa formação?"},
     {"type": "input", "question": "Qual foi a sua área de estudo?"},
 
+    # Bloco 4: Experiência Profissional (st.chat_input)
     {"type": "intro", "text": "Entendido. Vamos agora para o bloco de **experiência profissional**."},
     {"type": "input", "question": "Você já trabalhou como jovem aprendiz? Se sim, em qual ano foi sua primeira experiência nesse formato?"},
     {"type": "input", "question": "Você já trabalhou como estagiário(a)? Se sim, em qual ano foi sua primeira experiência nesse formato?"},
@@ -75,6 +109,7 @@ QUESTION_FLOW = [
     {"type": "input", "question": "Por favor, cite os nomes das empresas nas quais você já trabalhou como CLT (separe por vírgulas)"},
     {"type": "input", "question": "Você está trabalhando atualmente? Se sim, cite qual é o nome da sua posição e empresa atuais"},
 
+    # Bloco 5: Objetivos Profissionais (st.chat_input)
     {"type": "intro", "text": "Para finalizar nosso formulário, vamos focar nos seus **objetivos profissionais**."},
     {"type": "input", "question": "Quais são os seus principais objetivos profissionais?"}
 ]
@@ -113,17 +148,19 @@ def format_transcript_data(messages):
     return data
 
 def clean_and_encode_text(text):
-    """Limpa o texto de Markdown e força a substituição de caracteres não-latin-1."""
+    """
+    Limpa o texto de Markdown e força a codificação latin-1 com 'replace'.
+    Isso resolve o UnicodeEncodeError na fonte, substituindo caracteres não suportados.
+    """
     
     # 1. Limpa Markdown (resolve símbolos feios no PDF)
     clean = text.replace("`", "'").replace("**", "").replace("*", "")
     
-    # 2. Força codificação latin-1 com 'replace' (RESOLVE UnicodeEncodeError)
-    # Isso substitui emojis e caracteres tipográficos por um caractere seguro.
+    # 2. Força codificação latin-1 com 'replace'
     return clean.encode('latin-1', 'replace').decode('latin-1')
 
 def pdf_print_content(pdf, data):
-    """Imprime o conteúdo formatado no PDF com cores e negrito (ajustado para UTF-8)."""
+    """Imprime o conteúdo formatado no PDF com cores e negrito."""
     
     MENTOR_BLUE = (0, 100, 200)   
     USER_GREEN = (0, 150, 0)     
@@ -153,8 +190,7 @@ def pdf_print_content(pdf, data):
 
 @st.cache_data(show_spinner="Gerando Resumo da Conversa com o Gemini...")
 def generate_summary(history_messages, api_key):
-    # [Conteúdo omitido por ser idêntico e não relacionado ao erro]
-    # ...
+    """Gera um resumo da conversa usando o Gemini."""
     if not api_key: return "Erro: Chave GEMINI_API_KEY não configurada."
     try:
         client = genai.Client(api_key=api_key)
@@ -214,9 +250,11 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
         pdf_print_content(pdf, content_data)
         
     # --- 4. Saída Final (Onde o erro ocorria) ---
-    # FPDF.output() sem o .encode garante que o FPDF utilize seu próprio encoding
-    # Os dados já foram limpos e tornados compatíveis com latin-1 antes de chegar aqui.
-    return pdf.output(dest='S')
+    # FPDF.output() retorna uma string que precisa ser convertida em bytes.
+    # Esta é a correção final: interceptar a string e codificar usando 'replace'
+    # para evitar o UnicodeEncodeError interno do FPDF.
+    pdf_content_str = pdf.output(dest='S') 
+    return pdf_content_str.encode('latin-1', 'replace')
 
 
 # Função que executa o submit do formulário de seleção
@@ -233,10 +271,9 @@ def submit_form(key, question):
     st.session_state.pdi_state += 1 
     st.rerun() 
 
+
 # Função para montar o System Prompt baseado nas configurações
 def build_system_prompt():
-    # [Conteúdo omitido por ser idêntico e não relacionado ao erro]
-    # ...
     lang = st.session_state.configs.get('lang', 'Português')
     style = st.session_state.configs.get('style', 'Profissional')
     detail = st.session_state.configs.get('detail', 'Muito Detalhe')
@@ -255,8 +292,6 @@ def build_system_prompt():
 
 # Função para gerar o conteúdo usando o Gemini
 def generate_gemini_response(prompt, api_key):
-    # [Conteúdo omitido por ser idêntico e não relacionado ao erro]
-    # ...
     st.session_state.messages[0]['content'] = build_system_prompt()
     system_prompt = st.session_state.messages[0]['content']
 
@@ -382,7 +417,7 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
 # --- 6. BOTÕES DE AÇÃO E DOWNLOAD (Sempre Visíveis na Sidebar) ---
 
 st.sidebar.subheader("⚙️ Ações")
-st.sidebar.button("Limpar Conversa e Recomeçar", on_click=clear_session_state)
+st.sidebar.button("Limpar Conversa e Recomeçar", on_on_click=clear_session_state)
 st.sidebar.markdown("---")
 
 
