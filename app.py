@@ -166,48 +166,35 @@ def generate_summary(history_messages, api_key):
     except Exception as e: 
         return f"Ocorreu um erro inesperado ao gerar resumo: {e}"
 
-def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
-    """Gera o PDF com layout escuro, personalizado e estruturado (Solução Estável)."""
+# Função 1: Gera o PDF a partir de um texto formatado
+def generate_pdf_bytes(content_text, title):
+    """Gera o PDF a partir de um texto string, usando fpdf2."""
     
-    pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=20)
+    # Cria o objeto PDF (usando o FPDF importado de fpdf.fpdf)
+    try:
+        pdf = FPDF() 
+    except NameError:
+        # Se houver falha na importação, tenta importar novamente
+        from fpdf.fpdf import FPDF as FPDF_Fallback
+        pdf = FPDF_Fallback()
+
+    pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     
-    # --- 1. Fundo Preto (HACK) ---
-    pdf.set_fill_color(0, 0, 0) # Preto RGB
-    pdf.rect(0, 0, pdf.w, pdf.h, 'F') # Desenha um retângulo preto em toda a página
-
-    # --- 2. Cabeçalho Personalizado (Branco) ---
-    pdf.set_text_color(255, 255, 255) # Branco
-    pdf.set_font("Helvetica", style="B", size=18)
-    pdf.cell(0, 10, "🎯 Mentor de PDI Inteligente (Gemini)", ln=1, align="C")
-    
-    pdf.set_font("Helvetica", style="I", size=12)
-    pdf.cell(0, 7, title_suffix, ln=1, align="C")
-    
+    # Título
+    pdf.set_font("Helvetica", style="B", size=16)
+    pdf.cell(0, 10, title, ln=1, align="C")
     pdf.set_font("Helvetica", size=10)
-    pdf.cell(0, 5, f"Data: {st.session_state.start_time}", ln=1, align="C")
-    pdf.ln(8)
+    pdf.cell(0, 5, f"Data da Conversa: {st.session_state.start_time}", ln=1)
+    pdf.ln(5)
     
-    # --- 3. Conteúdo ---
-    
-    if is_summary:
-        # Para Resumo
-        pdf.set_text_color(255, 255, 255) 
-        pdf.set_font("Helvetica", size=11)
+    # Conteúdo (usando multi_cell para quebras de linha automáticas)
+    pdf.set_font("Helvetica", size=11)
+    # A biblioteca FPDF precisa de um encoding que suporte os caracteres
+    pdf.multi_cell(0, 6, content_text.encode('latin-1', 'replace').decode('latin-1'))
         
-        clean_summary = clean_and_encode_text(content_data)
-        
-        # MUDANÇA CRÍTICA: Força a conversão para bytes seguros ANTES de multi_cell
-        pdf.multi_cell(0, 6, clean_summary.encode('latin-1', 'replace').decode('latin-1'))
-    else:
-        # Para Transcrição
-        pdf_print_content(pdf, content_data)
-        
-    # --- 4. Saída Final (RESTAURADO PARA A VERSÃO ESTÁVEL) ---
-        return pdf.output(dest='S').encode('latin-1', 'replace') # Usa 'replace' para o encode final
-
-
+    # Salva o PDF como bytes
+    return pdf.output(dest='S').encode('latin-1')
 # Função que executa o submit do formulário de seleção
 def submit_form(key, question):
     selected_option = st.session_state[f'select_{st.session_state.pdi_state}']
