@@ -10,11 +10,7 @@ st.set_page_config(page_title="Mentor de Carreira PDI (Gemini)", page_icon="🎯
 st.title("🎯 Mentor de PDI Inteligente (Gemini)")
 st.markdown("Olá! Sou seu assistente de carreira. Vamos construir seu **Plano de Desenvolvimento Individual** juntos. Por favor, responda o formulário inicial para um planejamento eficaz.")
 
-# Move o botão Limpar Conversa para a área principal
-if st.button("Limpar Conversa e Recomeçar"):
-    st.session_state.messages = []
-    st.session_state.pdi_state = 0
-    st.rerun()
+# REMOÇÃO DO BOTÃO "Limpar Conversa e Recomeçar" (Linha removida aqui)
 
 st.markdown("""
 <style>
@@ -48,7 +44,6 @@ st.markdown("""
     }
 
     /* 5. Estilo da Barra de Input de Mensagem (Onde o usuário digita) */
-    /* Este bloco customiza a caixa de texto */
     .stTextInput > div > div > input,
     .stTextInput > label {
         color: #FFFFFF; /* Fonte Branca */
@@ -57,18 +52,29 @@ st.markdown("""
         border-radius: 8px; /* Cantos arredondados */
     }
 
-    /* 6. Cor do Botão Limpar Conversa */
+    /* 6. Remova o botão que foi movido para o CSS anteriormente, caso exista. */
     .stButton>button {
-        color: #FFFFFF;
-        background-color: #1A1A1A;
-        border: 1px solid #FFFFFF;
+        display: none; /* Oculta todos os botões que usam este estilo, se estiverem lá */
+    }
+
+    /* 7. OCULTAR BARRA DE CABEÇALHO BRANCA SUPERIOR (Header) */
+    header {
+        visibility: hidden;
+        height: 0px;
     }
     
-    /* 7. Ocultar o Menu de Hambúrguer (☰) e o Rodapé 'Made with Streamlit' */
+    /* 8. OCULTAR BARRA DE RODAPÉ BRANCA INFERIOR (Footer) */
+    footer {
+        visibility: hidden;
+        height: 0px;
+    }
+
+    /* 9. Ocultar o Menu de Hambúrguer (☰) e o Rodapé 'Made with Streamlit' */
     #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- 2. Variáveis de Estado e Perguntas PERSONALIZADAS ---
 
@@ -96,7 +102,6 @@ FORM_QUESTIONS = [
 NUM_QUESTIONS = len(FORM_QUESTIONS)
 
 # --- 3. Carregamento Secreto da Chave ---
-# A chave é buscada da variável de ambiente definida no ambiente de hospedagem (Secrets)
 gemini_api_key = os.environ.get("GEMINI_API_KEY")
 
 # --- 4. Lógica de Memória (Histórico) ---
@@ -115,14 +120,12 @@ if "messages" not in st.session_state:
         TONALIDADE: Profissional, acolhedor e focado em resultado.
         """
     }]
-    # Inicializa o estado do formulário
     st.session_state.pdi_state = 0 
 
 
-# Função para gerar o conteúdo usando o Gemini
+# Função para gerar o conteúdo usando o Gemini (Mantida a mesma lógica estável)
 def generate_gemini_response(prompt, api_key):
     if not api_key:
-        # Mensagem de erro que só o desenvolvedor verá (em produção)
         st.error("Erro de configuração: A chave GEMINI_API_KEY não foi encontrada no ambiente de hospedagem.")
         return None
         
@@ -131,7 +134,6 @@ def generate_gemini_response(prompt, api_key):
         
         system_prompt = st.session_state.messages[0]['content']
         
-        # Prepara o histórico
         history_messages = []
         for m in st.session_state.messages[1:]:
             role = 'user' if m['role'] == 'user' else 'model'
@@ -141,10 +143,8 @@ def generate_gemini_response(prompt, api_key):
             )
             history_messages.append(content_obj)
         
-        # Adiciona a nova mensagem do usuário no formato Content
         history_messages.append(Content(role='user', parts=[Part.from_text(text=prompt)]))
 
-        # A chamada à API
         response = client.models.generate_content(
             model='gemini-2.5-flash', 
             contents=history_messages,
@@ -170,32 +170,25 @@ for msg in st.session_state.messages:
 
 # --- 5. Lógica da Máquina de Estados (Controle das 11 Perguntas) ---
 
-# 5.1. Exibir a próxima pergunta do formulário
 if st.session_state.pdi_state < NUM_QUESTIONS:
     next_question = FORM_QUESTIONS[st.session_state.pdi_state]
     st.chat_message("assistant").write(next_question)
 
 
-# 5.2. Captura a interação do usuário
 if prompt := st.chat_input("Digite sua resposta aqui..."):
     
-    # Adiciona a mensagem do usuário ao histórico e exibe
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
-    # Lógica de Transição de Estado:
     if st.session_state.pdi_state < NUM_QUESTIONS:
         st.session_state.pdi_state += 1
         
         if st.session_state.pdi_state < NUM_QUESTIONS:
             st.rerun() 
         else:
-            # Transição para o chat ativo (Formulário completo)
-            
             with st.chat_message("assistant"):
                 st.markdown("✅ **Formulário inicial completo!** O Mentor de Carreira já está analisando suas 11 respostas. Por favor, aguarde enquanto ele processa a primeira análise e inicia a fase de identificação de *Gaps*.")
                 
-            # Chama o Gemini para a primeira resposta da fase de análise
             final_prompt_to_gemini = st.session_state.messages[-1]['content']
             
             with st.chat_message("assistant"):
@@ -209,7 +202,6 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
     else:
         # 5.3. Chat Ativo (Gemini)
         
-        # Inicia a geração
         with st.chat_message("assistant"):
             response = generate_gemini_response(prompt, gemini_api_key)
             
