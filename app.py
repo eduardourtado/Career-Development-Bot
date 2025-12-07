@@ -81,23 +81,23 @@ st.markdown("""
 # 11 Perguntas estruturadas em ordem
 FORM_QUESTIONS = [
     # 1. Sobre você
-    "1/11. Como você preferiria que eu te chamasse?",
-    "2/11. Quantos anos você tem?",
+    "Como você preferiria que eu te chamasse?",
+    "Quantos anos você tem?",
     
     # 2. Sobre experiências educacionais
-    "3/11. Qual foi o maior nível de educação que você já obteve? (Opções: Ensino Fundamental, Ensino Médio, Bacharelado / Licenciatura / Tecnólogo, Pós-graduação, M.B.A., Mestrado, Doutorado, Pós-doutorado, Nenhum a declarar)",
-    "4/11. Em qual instituição você obteve essa formação?",
-    "5/11. Qual foi a sua área de estudo?",
+    "Qual foi o maior nível de educação que você já obteve? (Opções: Ensino Fundamental, Ensino Médio, Bacharelado / Licenciatura / Tecnólogo, Pós-graduação, M.B.A., Mestrado, Doutorado, Pós-doutorado, Nenhum a declarar)",
+    "Em qual instituição você obteve essa formação?",
+    "Qual foi a sua área de estudo?",
     
     # 3. Sobre experiência profissional
-    "6/11. Você já trabalhou como jovem aprendiz? Se sim, em qual ano foi sua primeira experiência nesse formato?",
-    "7/11. Você já trabalhou como estagiário(a)? Se sim, em qual ano foi sua primeira experiência nesse formato?",
-    "8/11. Você já trabalhou como funcionário CLT? Se sim, em qual ano foi sua primeira experiência nesse formato?",
-    "9/11. Por favor, cite os nomes das empresas nas quais você já trabalhou como CLT (separe por vírgulas)",
-    "10/11. Você está trabalhando atualmente? Se sim, cite qual é o nome da sua posição e empresa atuais",
+    "Você já trabalhou como jovem aprendiz? Se sim, em qual ano foi sua primeira experiência nesse formato?",
+    "Você já trabalhou como estagiário(a)? Se sim, em qual ano foi sua primeira experiência nesse formato?",
+    "Você já trabalhou como funcionário CLT? Se sim, em qual ano foi sua primeira experiência nesse formato?",
+    "Por favor, cite os nomes das empresas nas quais você já trabalhou como CLT (separe por vírgulas)",
+    "Você está trabalhando atualmente? Se sim, cite qual é o nome da sua posição e empresa atuais",
     
     # 4. Objetivos profissionais
-    "11/11. Quais são os seus principais objetivos profissionais?"
+    "Quais são os seus principais objetivos profissionais?"
 ]
 NUM_QUESTIONS = len(FORM_QUESTIONS)
 
