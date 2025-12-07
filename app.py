@@ -50,11 +50,12 @@ st.markdown("""
     }
     
     /* 9. ESTILO CRÍTICO PARA O BOTÃO DO FORMULÁRIO (PRETO COM TEXTO BRANCO) */
-    /* FOCA no botão dentro do formulário e FORÇA as cores */
+    /* Garante que o elemento do botão tenha o fundo preto e a borda branca para definição */
     div[data-testid="stForm"] div.stButton button {
         color: #FFFFFF !important; /* Texto Branco */
         background-color: #000000 !important; /* Fundo Preto */
-        border: 1px solid #FFFFFF !important; /* Borda Branca */
+        border: 2px solid #FFFFFF !important; /* Borda Branca visível */
+        box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); /* Sombra para destaque */
     }
     
     /* 10. GARANTE que o span (o texto interno) também seja branco */
