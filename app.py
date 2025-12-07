@@ -18,9 +18,30 @@ if st.button("Limpar Conversa e Recomeçar"):
 
 st.markdown("""
 <style>
+    /* 1. Largura Máxima da Área de Conteúdo */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 0rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        max-width: 800px; /* Limita a largura do chat */
+    }
+    
+    /* 2. Estilo das Caixas de Mensagem (Chat Bubbles) */
     .stChatMessage {
-        border-radius: 10px; 
-        padding: 10px;
+        border-radius: 15px; 
+        padding: 15px;
+        background-color: #F0F2F6; /* Fundo cinza claro para a bolha do chat */
+    }
+    
+    /* 3. Ocultar o Menu de Hambúrguer (☰) e o Rodapé 'Made with Streamlit' */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* 4. Título Principal (Opcional) */
+    h1 {
+        color: #4A90E2; /* Azul */
+        text-align: center;
     }
 </style>
 """, unsafe_allow_html=True)
