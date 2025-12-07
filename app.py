@@ -3,7 +3,7 @@ import os
 from google import genai
 from google.genai.errors import APIError
 from google.genai.types import Content, Part
-from fpdf2.fpdf import FPDF
+from fpdf.fpdf import FPDF2
 from datetime import datetime
 
 # --- Função de Limpeza de Estado ---
