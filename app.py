@@ -10,29 +10,42 @@ st.set_page_config(page_title="Mentor de Carreira PDI (Gemini)", page_icon="🎯
 st.title("🎯 Mentor de PDI Inteligente (Gemini)")
 st.markdown("Olá! Sou seu assistente de carreira. Vamos construir seu **Plano de Desenvolvimento Individual** juntos.")
 
-# --- CSS para Layout Preto/Branco (Mantido) ---
+# --- CSS para Layout Preto/Branco e Estabilidade ---
 st.markdown("""
 <style>
-    /* Estilos de Cores */
+    /* 1. Estilos de Cores */
     .stApp {background-color: #000000; color: #FFFFFF;}
     h1, h2, h3, h4, p, .stMarkdown {color: #FFFFFF !important;}
+    
+    /* 2. Largura e Padding */
     .block-container {padding-top: 2rem; padding-bottom: 0rem; padding-left: 2rem; padding-right: 2rem; max-width: 800px;}
+    
+    /* 3. Estilo das Caixas de Mensagem */
     .stChatMessage {border-radius: 15px; padding: 15px; background-color: #1A1A1A; color: #FFFFFF !important; border: 1px solid #444444;}
+    
+    /* 4. Estilo da Barra de Input de Mensagem */
     .stTextInput > div > div > input, .stTextInput > label {
         color: #FFFFFF; background-color: #000000; border: 1px solid #FFFFFF; border-radius: 8px;
     }
-    /* Oculta st.button simples (exceto os do formulário que aparecerão) */
+    
+    /* 5. CORREÇÃO DE LEGIBILIDADE PARA ST.RADIO E ST.SELECT */
+    .stRadio > label, .stRadio > div > label > div > div > p {
+        color: #FFFFFF !important; /* Texto da opção em Branco */
+    }
+    
+    /* 6. Oculta st.button simples (só aparecem os de formulário) */
     .stButton>button {display: none;}
-    /* Oculta elementos do Streamlit */
+    
+    /* 7. OCULTA BARRAS DE CABEÇALHO E RODAPÉ */
     header {visibility: hidden; height: 0px;}
     footer {visibility: hidden; height: 0px;}
     #MainMenu {visibility: hidden;}
     
-    /* Estilo do botão de formulário para que ele apareça */
+    /* 8. Estilo do botão de formulário para que ele apareça */
     div.stButton > button {
-        display: inline-block; /* Garante que o botão apareça dentro do formulário */
+        display: inline-block; 
         color: white; 
-        background-color: #4A90E2; 
+        background-color: #4A90E2; /* Cor de destaque para o botão */
         border: none;
         border-radius: 5px; 
         padding: 10px 15px;
@@ -79,7 +92,7 @@ NUM_FLOW_STEPS = len(QUESTION_FLOW)
 # --- 3. Carregamento Secreto da Chave ---
 gemini_api_key = os.environ.get("GEMINI_API_KEY")
 
-# --- 4. Lógica de Memória (Histórico) ---
+# --- 4. Lógica de Memória (Histórico e Estado) ---
 if "messages" not in st.session_state:
     st.session_state["messages"] = [{"role": "system", "content": ""}] 
     st.session_state.pdi_state = 0 
@@ -87,7 +100,7 @@ if "messages" not in st.session_state:
 
 # Função que executa o submit do formulário de seleção
 def submit_form(key, question):
-    # A resposta está no estado do componente de rádio button
+    # O valor é pego diretamente do st.session_state, garantindo estabilidade
     selected_option = st.session_state[f'select_{st.session_state.pdi_state}']
 
     # 1. Armazena a configuração
@@ -96,8 +109,9 @@ def submit_form(key, question):
     # 2. Registra a resposta no histórico como se fosse o usuário
     st.session_state.messages.append({"role": "user", "content": f"{question}: {selected_option}"})
     
-    # 3. Avança o estado
+    # 3. Avança o estado e força a reexecução
     st.session_state.pdi_state += 1 
+    st.rerun() 
 
 
 # Função para montar o System Prompt baseado nas configurações
@@ -167,14 +181,12 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
         st.session_state.pdi_state += 1
         st.rerun()
 
-    # 5.2. Exibir Múltipla Escolha (st.radio) - USANDO st.form PARA ESTABILIDADE
+    # 5.2. Exibir Múltipla Escolha (st.radio) - USANDO st.form
     elif current_step["type"] == "select":
         st.chat_message("assistant").write(current_step["question"])
         
-        # O formulário garante que o radio button e o botão de envio atuem como uma única unidade
-        # A função submit_form é chamada no envio
         with st.form(key=f'form_{st.session_state.pdi_state}'):
-            # O st.radio armazena o valor no st.session_state com a key definida
+            # O st.radio armazena o valor no st.session_state
             st.radio("Selecione uma opção:", 
                      current_step["options"], 
                      key=f'select_{st.session_state.pdi_state}')
@@ -185,3 +197,51 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
                 on_click=submit_form, 
                 kwargs={'key': current_step["key"], 'question': current_step["question"]}
             )
+        
+        st.stop() 
+
+    # 5.3. Exibir Pergunta de Texto (st.chat_input)
+    elif current_step["type"] == "input":
+        st.chat_message("assistant").write(current_step["question"])
+        # A lógica para capturar a resposta está abaixo, no st.chat_input
+
+
+# 5.4. Captura a interação do usuário (apenas para type="input")
+if prompt := st.chat_input("Digite sua resposta aqui..."):
+    
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.chat_message("user").write(prompt)
+
+    if st.session_state.pdi_state < NUM_FLOW_STEPS:
+        # Aumenta o estado se a resposta foi uma entrada de texto
+        st.session_state.pdi_state += 1
+        
+        if st.session_state.pdi_state < NUM_FLOW_STEPS:
+            st.rerun() 
+        else:
+            # Transição final para o Chat Ativo
+            with st.chat_message("assistant"):
+                st.markdown("✅ **Formulário inicial completo!** O Mentor de Carreira já está analisando suas respostas. Por favor, aguarde enquanto ele processa a primeira análise e inicia a fase de identificação de *Gaps*.")
+                
+            final_prompt_to_gemini = st.session_state.messages[-1]['content']
+            
+            with st.chat_message("assistant"):
+                response = generate_gemini_response(final_prompt_to_gemini, gemini_api_key)
+                if response:
+                    full_response = response.text
+                    st.markdown(full_response)
+                    st.session_state.messages.append({"role": "model", "content": full_response})
+                else:
+                    st.session_state.messages.pop()
+    else:
+        # 5.5. Chat Ativo (Gemini assume)
+        with st.chat_message("assistant"):
+            response = generate_gemini_response(prompt, gemini_api_key)
+            
+            if response:
+                full_response = response.text
+                st.markdown(full_response)
+                
+                st.session_state.messages.append({"role": "model", "content": full_response})
+            else:
+                st.session_state.messages.pop()
