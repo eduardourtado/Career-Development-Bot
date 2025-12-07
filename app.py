@@ -26,53 +26,23 @@ st.markdown("Olá! Sou seu assistente de carreira. Vamos construir seu **Plano d
 # --- CSS para Layout Preto/Branco e Estabilidade ---
 st.markdown("""
 <style>
-    /* 1. Estilos de Cores */
+    /* ... CSS OMITIDO POR CONCISÃO ... */
     .stApp {background-color: #000000; color: #FFFFFF;}
     h1, h2, h3, h4, p, .stMarkdown {color: #FFFFFF !important;}
-    
-    /* 2. Largura e Padding */
     .block-container {padding-top: 2rem; padding-bottom: 0rem; padding-left: 2rem; padding-right: 2rem; max-width: 800px;}
-    
-    /* 3. Estilo das Caixas de Mensagem */
     .stChatMessage {border-radius: 15px; padding: 15px; background-color: #1A1A1A; color: #FFFFFF !important; border: 1px solid #444444;}
-    
-    /* 4. Estilo da Barra de Input de Mensagem */
-    .stTextInput > div > div > input, .stTextInput > label {
-        color: #FFFFFF; background-color: #000000; border: 1px solid #FFFFFF; border-radius: 8px;
-    }
-    
-    /* 5. CORREÇÃO DE LEGIBILIDADE PARA ST.RADIO E ST.SELECT */
-    .stRadio > label, .stRadio > div > label > div > div > p {
+    .stRadio > label, .stRadio > div > label > div > div > p {color: #FFFFFF !important;}
+    div.stButton > button {background-color: #4A90E2; color: #FFFFFF; border: none; border-radius: 5px; padding: 10px 15px; cursor: pointer;}
+    div[data-testid="stForm"] div.stButton button {
         color: #FFFFFF !important; 
+        background-color: #000000 !important; 
+        border: 2px solid #FFFFFF !important; 
+        box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
     }
-    
-    /* 7. OCULTA BARRAS DE CABEÇALHO E RODAPÉ */
+    div[data-testid="stForm"] div.stButton button span {color: #FFFFFF !important;}
     header {visibility: hidden; height: 0px;}
     footer {visibility: hidden; height: 0px;}
     #MainMenu {visibility: hidden;}
-    
-    /* 8. Estilo padrão para Botões (Download) */
-    div.stButton > button {
-        background-color: #4A90E2; /* Fundo Azul */
-        color: #FFFFFF; /* Texto Branco */
-        border: none;
-        border-radius: 5px; 
-        padding: 10px 15px;
-        cursor: pointer;
-    }
-    
-    /* 9. ESTILO CRÍTICO PARA O BOTÃO DO FORMULÁRIO (PRETO COM TEXTO BRANCO) */
-    div[data-testid="stForm"] div.stButton button {
-        color: #FFFFFF !important; /* Texto Branco */
-        background-color: #000000 !important; /* Fundo Preto */
-        border: 2px solid #FFFFFF !important; /* Borda Branca visível */
-        box-shadow: 0 0 5px rgba(255, 255, 255, 0.5); /* Sombra para destaque */
-    }
-    
-    /* 10. GARANTE que o span (o texto interno) também seja branco */
-    div[data-testid="stForm"] div.stButton button span {
-        color: #FFFFFF !important; 
-    }
     
 </style>
 """, unsafe_allow_html=True)
@@ -80,7 +50,6 @@ st.markdown("""
 
 # --- 2. Variáveis de Estado e Perguntas PERSONALIZADAS ---
 QUESTION_FLOW = [
-    # Bloco 1: Configurações (st.radio)
     {"type": "intro", "text": "Antes de começarmos, vamos configurar o **idioma e o estilo de resposta** do nosso Mentor. Isso garante uma comunicação perfeita!"},
     {"type": "select", "question": "Em qual idioma você prefere que o Mentor de PDI responda?", 
      "key": "lang", "options": ["Português", "Inglês", "Espanhol"]},
@@ -88,27 +57,19 @@ QUESTION_FLOW = [
      "key": "style", "options": ["Extrovertido", "Profissional"]},
     {"type": "select", "question": "Você prefere respostas com mais ou menos detalhes?", 
      "key": "detail", "options": ["Muito Detalhe", "Direto ao Ponto"]},
-
-    # Bloco 2: Sobre Você (st.chat_input)
     {"type": "intro", "text": "Ótimo! Agora, começarei fazendo algumas perguntas sobre você. Tudo bem?"},
     {"type": "input", "question": "Como você preferiria que eu te chamasse?"},
     {"type": "input", "question": "Quantos anos você tem?"},
-
-    # Bloco 3: Experiências Educacionais (st.chat_input)
     {"type": "intro", "text": "Perfeito. Agora, gostaria de explorarmos mais detalhes sobre suas **experiências educacionais**."},
     {"type": "input", "question": "Qual foi o maior nível de educação que você já obteve? (Ex: Bacharelado, Mestrado, Pós-doutorado)"},
     {"type": "input", "question": "Em qual instituição você obteve essa formação?"},
     {"type": "input", "question": "Qual foi a sua área de estudo?"},
-
-    # Bloco 4: Experiência Profissional (st.chat_input)
     {"type": "intro", "text": "Entendido. Vamos agora para o bloco de **experiência profissional**."},
     {"type": "input", "question": "Você já trabalhou como jovem aprendiz? Se sim, em qual ano foi sua primeira experiência nesse formato?"},
     {"type": "input", "question": "Você já trabalhou como estagiário(a)? Se sim, em qual ano foi sua primeira experiência nesse formato?"},
     {"type": "input", "question": "Você já trabalhou como funcionário CLT? Se sim, em qual ano foi sua primeira experiência nesse formato?"},
     {"type": "input", "question": "Por favor, cite os nomes das empresas nas quais você já trabalhou como CLT (separe por vírgulas)"},
     {"type": "input", "question": "Você está trabalhando atualmente? Se sim, cite qual é o nome da sua posição e empresa atuais"},
-
-    # Bloco 5: Objetivos Profissionais (st.chat_input)
     {"type": "intro", "text": "Para finalizar nosso formulário, vamos focar nos seus **objetivos profissionais**."},
     {"type": "input", "question": "Quais são os seus principais objetivos profissionais?"}
 ]
@@ -126,7 +87,6 @@ if "messages" not in st.session_state:
 def get_user_name():
     """Busca o nome preferido do usuário no histórico da conversa."""
     name_question = "Como você preferiria que eu te chamasse?"
-    
     for msg in st.session_state.messages:
         if msg["role"] == "user" and name_question in msg["content"]:
             try:
@@ -148,28 +108,20 @@ def format_transcript_data(messages):
 
 def clean_and_encode_text(text):
     """
-    Limpa o texto de Markdown e força a codificação latin-1 com 'replace'.
-    Isso substitui emojis e caracteres tipográficos por um caractere seguro.
+    Limpa o texto de Markdown e garante que qualquer caractere complexo seja substituído.
     """
-    
-    # 1. Limpa Markdown (resolve símbolos feios no PDF)
     clean = text.replace("`", "'").replace("**", "").replace("*", "")
-    
-    # 2. Garante que qualquer resquício de emoji ou caractere complexo seja substituído
     return clean.encode('latin-1', 'replace').decode('latin-1')
 
 def pdf_print_content(pdf, data):
-    """
-    Imprime o conteúdo formatado no PDF com cores e negrito. 
-    Contém a correção crítica de encoding.
-    """
+    """Imprime o conteúdo formatado no PDF com cores e negrito (Solução Estável)."""
     
     MENTOR_BLUE = (0, 100, 200)   
     USER_GREEN = (0, 150, 0)     
     WHITE = (255, 255, 255)      
     
     for role, content in data:
-        # TRATAMENTO CRÍTICO: Limpeza e codificação antes de tocar o FPDF
+        # Limpeza é feita aqui
         clean_content = clean_and_encode_text(content)
 
         # 1. Impressão do Cabeçalho do Turno
@@ -186,8 +138,7 @@ def pdf_print_content(pdf, data):
         pdf.set_text_color(*WHITE)
         pdf.set_font("Helvetica", size=10)
         
-        # MUDANÇA CRÍTICA: Força a conversão para bytes seguros ANTES de multi_cell
-        # Isso impede que o FPDF quebre ao tentar codificar caracteres no final do documento.
+        # SOLUÇÃO ESTÁVEL: Força a conversão para bytes seguros ANTES de multi_cell
         pdf.multi_cell(0, 5, clean_content.encode('latin-1', 'replace').decode('latin-1'))
         
         pdf.ln(2)
@@ -216,7 +167,7 @@ def generate_summary(history_messages, api_key):
         return f"Ocorreu um erro inesperado ao gerar resumo: {e}"
 
 def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
-    """Gera o PDF com layout escuro, personalizado e estruturado."""
+    """Gera o PDF com layout escuro, personalizado e estruturado (Solução Estável)."""
     
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=20)
@@ -241,37 +192,28 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
     # --- 3. Conteúdo ---
     
     if is_summary:
-        # Para Resumo: Limpa e imprime o texto diretamente
+        # Para Resumo
         pdf.set_text_color(255, 255, 255) 
         pdf.set_font("Helvetica", size=11)
         
-        # TRATAMENTO CRÍTICO: Limpeza e codificação antes de tocar o FPDF
         clean_summary = clean_and_encode_text(content_data)
         
         # MUDANÇA CRÍTICA: Força a conversão para bytes seguros ANTES de multi_cell
         pdf.multi_cell(0, 6, clean_summary.encode('latin-1', 'replace').decode('latin-1'))
     else:
-        # Para Transcrição, usa a função de impressão colorida
+        # Para Transcrição
         pdf_print_content(pdf, content_data)
         
-    # --- 4. Saída Final (Onde o erro ocorria) ---
-    # FPDF.output() retorna uma string que precisa ser convertida em bytes.
-    # Usamos o encode final com replace para capturar qualquer metadado que o fpdf2 falhe ao codificar.
-    pdf_content_str = pdf.output(dest='S') 
-    return pdf_content_str.encode('latin-1', 'replace')
+    # --- 4. Saída Final (RESTAURADO PARA A VERSÃO ESTÁVEL) ---
+    # Encerra o PDF, obtém a string de saída e a codifica para bytes com latin-1
+    return pdf.output(dest='S').encode('latin-1', 'replace') # Usa 'replace' para o encode final
 
 
 # Função que executa o submit do formulário de seleção
 def submit_form(key, question):
     selected_option = st.session_state[f'select_{st.session_state.pdi_state}']
-
-    # 1. Armazena a configuração
     st.session_state.configs[key] = selected_option
-    
-    # 2. Registra a resposta do usuário no histórico
     st.session_state.messages.append({"role": "user", "content": f"{question}: {selected_option}"})
-    
-    # 3. Avança o estado e força a reexecução
     st.session_state.pdi_state += 1 
     st.rerun() 
 
@@ -337,7 +279,7 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
     
     current_step = QUESTION_FLOW[st.session_state.pdi_state]
     
-    # 5.1. Exibir Introdução E SALVAR NO HISTÓRICO (correção de duplicação)
+    # 5.1. Exibir Introdução E SALVAR NO HISTÓRICO
     if current_step["type"] == "intro":
         intro_text = current_step["text"]
         st.chat_message("assistant").write(intro_text)
