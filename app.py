@@ -221,8 +221,12 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
         # Para Transcrição, usa a função de impressão colorida
         pdf_print_content(pdf, content_data)
         
-    # Salva o PDF como bytes
-    return pdf.output(dest='S').encode('latin-1')
+# Tenta gerar o PDF com a codificação padrão (latin-1)
+    try:
+        return pdf.output(dest='S').encode('latin-1')
+    except UnicodeEncodeError:
+        # Se falhar, usa 'replace' para substituir caracteres desconhecidos
+        return pdf.output(dest='S').encode('latin-1', 'replace')
 
 
 # Função que executa o submit do formulário de seleção
