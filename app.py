@@ -3,6 +3,7 @@ import os
 from google import genai
 from google.genai.errors import APIError
 from google.genai.types import Content, Part
+from fpdf import FPDF # Importa a biblioteca FPDF2
 
 # --- 1. Configuração da Interface ---
 st.set_page_config(page_title="Mentor de Carreira PDI (Gemini)", page_icon="🎯", layout="centered")
@@ -41,7 +42,7 @@ st.markdown("""
     footer {visibility: hidden; height: 0px;}
     #MainMenu {visibility: hidden;}
     
-    /* 8. Estilo do botão de formulário para que ele apareça */
+    /* 8. Estilo do botão de formulário e download para que apareçam */
     div.stButton > button {
         display: inline-block; 
         color: white; 
@@ -100,6 +101,45 @@ if "messages" not in st.session_state:
     st.session_state.pdi_state = 0 
     st.session_state.configs = {} 
 
+# --- FUNÇÃO DE GERAÇÃO DE PDF (NOVA) ---
+def generate_pdf_bytes(messages):
+    """Gera o histórico de mensagens em um objeto bytes PDF."""
+    
+    # Cria o objeto PDF
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    
+    # Título
+    pdf.set_font("Helvetica", style="B", size=14)
+    pdf.cell(0, 10, "Histórico Mentor de Carreira PDI", ln=1, align="C")
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(0, 5, f"Data: {st.session_state.get('start_time', 'N/A')}", ln=1)
+    pdf.ln(5)
+    
+    # Conteúdo (Histórico)
+    for msg in messages[1:]:
+        role = "MENTOR" if msg["role"] == "model" else "USUÁRIO"
+        content = msg["content"]
+        
+        # Define a cor e o estilo da fonte
+        pdf.set_font("Helvetica", style="B" if role == "MENTOR" else "", size=10)
+        pdf.set_fill_color(200, 220, 255) # Cor clara para o Mentor
+        pdf.set_text_color(0, 0, 0) # Texto preto
+        
+        # Adiciona a linha do papel (ROLE)
+        pdf.cell(0, 7, f"[{role}]:", ln=1, fill=True)
+
+        # Adiciona o conteúdo (usando multi_cell para quebras de linha automáticas)
+        pdf.set_font("Helvetica", size=10)
+        pdf.set_text_color(0, 0, 0)
+        pdf.multi_cell(0, 5, content.encode('latin-1', 'replace').decode('latin-1')) # Encoding para caracteres especiais
+        pdf.ln(1)
+        
+    # Salva o PDF como bytes
+    return pdf.output(dest='S').encode('latin-1')
+
+
 # Função que executa o submit do formulário de seleção
 def submit_form(key, question):
     selected_option = st.session_state[f'select_{st.session_state.pdi_state}']
@@ -125,15 +165,12 @@ def build_system_prompt():
         Você é um Mentor de Carreira Sênior especializado em criar Planos de Desenvolvimento Individual (PDI).
         
         INSTRUÇÕES DE COMPORTAMENTO RÍGIDAS:
-        1. EDUCAÇÃO: Você **DEVE** ser sempre cortês, educado e profissional. **NUNCA** use linguagem passivo-agressiva ou grosseira, mesmo ao pedir esclarecimentos ou ao criticar objetivos.
+        1. EDUCAÇÃO: Você **DEVE** ser sempre cortês, educado e profissional. **NUNCA** use linguagem passivo-agressiva ou grosseira.
         2. IDIOMA PRINCIPAL: Responda APENAS em {lang}.
-        3. TOM E DETALHE: O tom de voz deve ser {style} e o nível de profundidade deve ser {detail}. Se for 'Direto ao Ponto', use listas e parágrafos curtos.
+        3. TOM E DETALHE: O tom de voz deve ser {style} e o nível de profundidade deve ser {detail}.
         
         SUA MISSÃO:
-        Você acaba de receber as respostas iniciais do usuário.
-        
-        1. REVISE E VALIDE: Revise as respostas com o tom {style}. Se alguma informação crucial parecer incompleta, peça esclarecimento de forma **educada**.
-        2. INICIE A ANÁLISE: Após a validação, comece a etapa 2 do PDI: 'Identificar Gaps (O que falta aprender?)'. Baseie-se nas experiências e objetivos.
+        Você acaba de receber as respostas iniciais do usuário. Revise, valide e inicie a fase de identificação de Gaps.
         """
 
 # Função para gerar o conteúdo usando o Gemini
@@ -169,10 +206,8 @@ def generate_gemini_response(prompt, api_key):
 
 # Exibir mensagens anteriores no chat
 for msg in st.session_state.messages:
-    # Ignoramos a mensagem do "system" (índice 0)
     if msg["role"] != "system":
         role = 'assistant' if msg["role"] == 'model' else msg["role"]
-        # Se a mensagem foi salva, ela será exibida aqui
         st.chat_message(role).write(msg["content"])
 
 
@@ -183,10 +218,7 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
     
     # 5.1. Exibir Introdução E SALVAR NO HISTÓRICO
     if current_step["type"] == "intro":
-        # A mensagem é exibida para o usuário (como assistente)
         st.chat_message("assistant").write(current_step["text"])
-        
-        # A MENSAGEM É SALVA NO HISTÓRICO PARA EXIBIÇÃO FUTURA
         st.session_state.messages.append({"role": "model", "content": current_step["text"]})
         
         st.session_state.pdi_state += 1
@@ -194,11 +226,7 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
 
     # 5.2. Exibir Múltipla Escolha (st.radio) E SALVAR PERGUNTA NO HISTÓRICO
     elif current_step["type"] == "select":
-        # A pergunta é exibida para o usuário (como assistente)
         st.chat_message("assistant").write(current_step["question"])
-        
-        # A PERGUNTA É SALVA NO HISTÓRICO
-        # (A resposta será salva dentro da submit_form)
         st.session_state.messages.append({"role": "model", "content": current_step["question"]})
 
         with st.form(key=f'form_{st.session_state.pdi_state}'):
@@ -216,23 +244,18 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
 
     # 5.3. Exibir Pergunta de Texto (st.chat_input) E SALVAR NO HISTÓRICO
     elif current_step["type"] == "input":
-        # A pergunta é exibida para o usuário (como assistente)
         st.chat_message("assistant").write(current_step["question"])
-        
-        # A PERGUNTA É SALVA NO HISTÓRICO
         st.session_state.messages.append({"role": "model", "content": current_step["question"]})
-        # A lógica para capturar a resposta está abaixo, no st.chat_input
 
 
-# 5.4. Captura a interação do usuário (apenas para type="input")
+# 5.4. Captura a interação do usuário e Finaliza
 if prompt := st.chat_input("Digite sua resposta aqui..."):
     
-    # A resposta do usuário já é salva aqui
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
 
     if st.session_state.pdi_state < NUM_FLOW_STEPS:
-        # Aumenta o estado se a resposta foi uma entrada de texto
+        
         st.session_state.pdi_state += 1
         
         if st.session_state.pdi_state < NUM_FLOW_STEPS:
@@ -264,3 +287,21 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
                 st.session_state.messages.append({"role": "model", "content": full_response})
             else:
                 st.session_state.messages.pop()
+
+# --- 6. BOTÃO DE DOWNLOAD (SÓ APARECE APÓS O FLUXO INICIAL) ---
+if st.session_state.pdi_state >= NUM_FLOW_STEPS:
+    
+    # Obtém o conteúdo do PDF como bytes
+    pdf_bytes = generate_pdf_bytes(st.session_state.messages)
+    
+    # Coloca o botão em um container no topo para melhor visibilidade
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🗂️ Ações")
+    
+    # Adiciona o botão de download
+    st.sidebar.download_button(
+        label="Download Histórico (PDF)",
+        data=pdf_bytes,
+        file_name="Historico_PDI_Mentor.pdf",
+        mime="application/pdf"
+    )
