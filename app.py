@@ -6,11 +6,23 @@ from google.genai.types import Content, Part
 from fpdf import FPDF
 from datetime import datetime
 
+# --- Função de Limpeza de Estado ---
+def clear_session_state():
+    """Reinicia todas as variáveis de estado da sessão."""
+    st.session_state["messages"] = [{"role": "system", "content": ""}] 
+    st.session_state.pdi_state = 0 
+    st.session_state.configs = {} 
+    st.session_state.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Limpa o cache para que o resumo seja gerado novamente
+    if 'generate_summary' in st.session_state:
+        del st.session_state['generate_summary']
+
+
 # --- 1. Configuração da Interface ---
 st.set_page_config(page_title="Mentor de Carreira PDI (Gemini)", page_icon="🎯", layout="centered")
 
 st.title("🎯 Mentor de PDI Inteligente (Gemini)")
-st.markdown("Olá! Sou seu assistente de carreira. Vamos construir seu **Plano de Desenvolvimento Individual** juntos.")
+st.markdown("Olá! Sou seu assistente de carreira. Vamos construir seu **Plano de Desenvolvimento Individual** juntos. Por favor, responda o formulário inicial para um planejamento eficaz.")
 
 # --- CSS para Layout Preto/Branco e Estabilidade ---
 st.markdown("""
@@ -108,10 +120,7 @@ gemini_api_key = os.environ.get("GEMINI_API_KEY")
 
 # --- 4. Lógica de Memória (Histórico e Estado) ---
 if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "system", "content": ""}] 
-    st.session_state.pdi_state = 0 
-    st.session_state.configs = {} 
-    st.session_state.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    clear_session_state() # Garante que o estado seja inicializado corretamente
 
 # --- FUNÇÕES DE GERAÇÃO E DOWNLOAD ---
 
@@ -133,7 +142,7 @@ def generate_pdf_bytes(content_text, title):
     
     # Conteúdo (usando multi_cell para quebras de linha automáticas)
     pdf.set_font("Helvetica", size=11)
-    # A biblioteca FPDF precisa de um encoding que suporte os caracteres, 'latin-1' funciona bem.
+    # A biblioteca FPDF precisa de um encoding que suporte os caracteres
     pdf.multi_cell(0, 6, content_text.encode('latin-1', 'replace').decode('latin-1'))
         
     # Salva o PDF como bytes
@@ -220,7 +229,7 @@ def build_system_prompt():
         Você acaba de receber as respostas iniciais do usuário. Revise, valide e inicie a fase de identificação de Gaps.
         """
 
-# Função para gerar o conteúdo usando o Gemini (SEM O ARGUMENTO 'stream')
+# Função para gerar o conteúdo usando o Gemini (CORRIGIDA: SEM O ARGUMENTO 'stream')
 def generate_gemini_response(prompt, api_key):
     st.session_state.messages[0]['content'] = build_system_prompt()
     system_prompt = st.session_state.messages[0]['content']
@@ -242,7 +251,7 @@ def generate_gemini_response(prompt, api_key):
             model='gemini-2.5-flash', 
             contents=history_messages, 
             config={'system_instruction': system_prompt} 
-            # ❌ NÃO USAR: stream=True (corrigido o erro Models.generate_content got an unexpected keyword argument 'stream')
+            # ❌ NÃO USAR: stream=True
         )
         return response
     
@@ -269,8 +278,9 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
         intro_text = current_step["text"]
         st.chat_message("assistant").write(intro_text)
         
-        # Salva a introdução
-        st.session_state.messages.append({"role": "model", "content": intro_text})
+        # Salva a introdução SE ELA NÃO FOR A ÚLTIMA (correção de duplicação)
+        if not st.session_state.messages or st.session_state.messages[-1]["content"] != intro_text:
+            st.session_state.messages.append({"role": "model", "content": intro_text})
         
         st.session_state.pdi_state += 1
         st.rerun()
@@ -280,7 +290,7 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
         question_text = current_step["question"]
         st.chat_message("assistant").write(question_text)
         
-        # Salva a pergunta SE ELA NÃO FOR A ÚLTIMA SALVA (para evitar duplicação)
+        # Salva a pergunta SE ELA NÃO FOR A ÚLTIMA SALVA (correção de duplicação)
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != question_text:
             st.session_state.messages.append({"role": "model", "content": question_text})
 
@@ -302,7 +312,7 @@ if st.session_state.pdi_state < NUM_FLOW_STEPS:
         question_text = current_step["question"]
         st.chat_message("assistant").write(question_text)
 
-        # Salva a pergunta SE ELA NÃO FOR A ÚLTIMA SALVA (para evitar duplicação)
+        # Salva a pergunta SE ELA NÃO FOR A ÚLTIMA SALVA (correção de duplicação)
         if not st.session_state.messages or st.session_state.messages[-1]["content"] != question_text:
             st.session_state.messages.append({"role": "model", "content": question_text})
 
@@ -347,12 +357,15 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
             else:
                 st.session_state.messages.pop()
 
-# --- 6. BOTÕES DE DOWNLOAD (Sempre Visíveis na Sidebar) ---
+# --- 6. BOTÕES DE AÇÃO E DOWNLOAD (Sempre Visíveis na Sidebar) ---
 
-# Coloca os botões em um container na sidebar
+st.sidebar.subheader("⚙️ Ações")
+st.sidebar.button("Limpar Conversa e Recomeçar", on_click=clear_session_state)
 st.sidebar.markdown("---")
-st.sidebar.subheader("🗂️ Download da Conversa")
-st.sidebar.markdown("Selecione o formato para baixar o histórico:")
+
+
+# Geração de PDF (visível o tempo todo)
+st.sidebar.subheader("🗂️ Download do Histórico")
 
 # --- Opção 1: Transcrição Completa ---
 full_transcript_text = format_transcript_text(st.session_state.messages)
