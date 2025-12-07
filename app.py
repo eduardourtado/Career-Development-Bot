@@ -7,7 +7,7 @@ from google.genai.types import Content, Part
 # --- 1. Configuração da Interface ---
 st.set_page_config(page_title="Mentor de Carreira PDI (Gemini)", page_icon="🎯", layout="centered")
 
-st.title("🎯 Mentor de PDI Inteligente (Gemini)")
+st.title("Mentor de PDI Inteligente (Gemini)")
 st.markdown("Olá! Sou seu assistente de carreira. Vamos construir seu **Plano de Desenvolvimento Individual** juntos. Por favor, responda o formulário inicial para um planejamento eficaz.")
 
 st.markdown("""
