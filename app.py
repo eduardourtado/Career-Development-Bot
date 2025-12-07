@@ -205,8 +205,7 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
         pdf_print_content(pdf, content_data)
         
     # --- 4. Saída Final (RESTAURADO PARA A VERSÃO ESTÁVEL) ---
-    # Encerra o PDF, obtém a string de saída e a codifica para bytes com latin-1
-    return pdf.output(dest='S').encode('latin-1', 'replace') # Usa 'replace' para o encode final
+        return pdf.output(dest='S').encode('latin-1')
 
 
 # Função que executa o submit do formulário de seleção
