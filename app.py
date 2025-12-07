@@ -417,7 +417,8 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
 # --- 6. BOTÕES DE AÇÃO E DOWNLOAD (Sempre Visíveis na Sidebar) ---
 
 st.sidebar.subheader("⚙️ Ações")
-st.sidebar.button("Limpar Conversa e Recomeçar", on_on_click=clear_session_state)
+# CORREÇÃO: on_on_click -> on_click
+st.sidebar.button("Limpar Conversa e Recomeçar", on_click=clear_session_state) 
 st.sidebar.markdown("---")
 
 
