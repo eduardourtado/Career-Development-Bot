@@ -39,27 +39,27 @@ st.markdown("""
     footer {visibility: hidden; height: 0px;}
     #MainMenu {visibility: hidden;}
     
-    /* 8. Estilo do botão de formulário e download (FUNDO AZUL) */
-    /* Esta regra é para botões que não estão no formulário ou em hover */
+    /* 8. Estilo padrão para Botões (Download) */
     div.stButton > button {
-        background-color: #4A90E2; 
+        background-color: #4A90E2; /* Fundo Azul */
+        color: #FFFFFF; /* Texto Branco */
         border: none;
         border-radius: 5px; 
         padding: 10px 15px;
         cursor: pointer;
     }
     
-    /* 9. CORREÇÃO DE ILEGIBILIDADE DO BOTÃO DE FORMULÁRIO (TEXTO PRETO) */
-    /* FOCA no botão dentro do formulário E FORÇA A COR DO TEXTO para PRETO */
+    /* 9. ESTILO CRÍTICO PARA O BOTÃO DO FORMULÁRIO (PRETO COM TEXTO BRANCO) */
+    /* FOCA no botão dentro do formulário e FORÇA as cores */
     div[data-testid="stForm"] div.stButton button {
-        color: #000000 !important; /* Texto Preto no botão do formulário */
-        background-color: #FFFFFF !important; /* Fundo Branco (para garantir contraste) */
-        border: 1px solid #000000 !important; /* Borda preta para definição */
+        color: #FFFFFF !important; /* Texto Branco */
+        background-color: #000000 !important; /* Fundo Preto */
+        border: 1px solid #FFFFFF !important; /* Borda Branca */
     }
     
-    /* Garante que o span (o texto interno) também seja preto, caso a regra 9 falhe */
+    /* 10. GARANTE que o span (o texto interno) também seja branco */
     div[data-testid="stForm"] div.stButton button span {
-        color: #000000 !important; 
+        color: #FFFFFF !important; 
     }
     
 </style>
