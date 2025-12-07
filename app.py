@@ -13,7 +13,6 @@ def clear_session_state():
     st.session_state.pdi_state = 0 
     st.session_state.configs = {} 
     st.session_state.start_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # Limpa o cache para que o resumo seja gerado novamente
     if 'generate_summary' in st.session_state:
         del st.session_state['generate_summary']
 
@@ -150,17 +149,20 @@ def format_transcript_data(messages):
 def clean_and_encode_text(text):
     """
     Limpa o texto de Markdown e força a codificação latin-1 com 'replace'.
-    Isso resolve o UnicodeEncodeError na fonte, substituindo caracteres não suportados.
+    Isso substitui emojis e caracteres tipográficos por um caractere seguro.
     """
     
     # 1. Limpa Markdown (resolve símbolos feios no PDF)
     clean = text.replace("`", "'").replace("**", "").replace("*", "")
     
-    # 2. Força codificação latin-1 com 'replace'
+    # 2. Garante que qualquer resquício de emoji ou caractere complexo seja substituído
     return clean.encode('latin-1', 'replace').decode('latin-1')
 
 def pdf_print_content(pdf, data):
-    """Imprime o conteúdo formatado no PDF com cores e negrito."""
+    """
+    Imprime o conteúdo formatado no PDF com cores e negrito. 
+    Contém a correção crítica de encoding.
+    """
     
     MENTOR_BLUE = (0, 100, 200)   
     USER_GREEN = (0, 150, 0)     
@@ -184,7 +186,9 @@ def pdf_print_content(pdf, data):
         pdf.set_text_color(*WHITE)
         pdf.set_font("Helvetica", size=10)
         
-        pdf.multi_cell(0, 5, clean_content)
+        # MUDANÇA CRÍTICA: Força a conversão para bytes seguros ANTES de multi_cell
+        # Isso impede que o FPDF quebre ao tentar codificar caracteres no final do documento.
+        pdf.multi_cell(0, 5, clean_content.encode('latin-1', 'replace').decode('latin-1'))
         
         pdf.ln(2)
 
@@ -244,15 +248,15 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
         # TRATAMENTO CRÍTICO: Limpeza e codificação antes de tocar o FPDF
         clean_summary = clean_and_encode_text(content_data)
         
-        pdf.multi_cell(0, 6, clean_summary)
+        # MUDANÇA CRÍTICA: Força a conversão para bytes seguros ANTES de multi_cell
+        pdf.multi_cell(0, 6, clean_summary.encode('latin-1', 'replace').decode('latin-1'))
     else:
         # Para Transcrição, usa a função de impressão colorida
         pdf_print_content(pdf, content_data)
         
     # --- 4. Saída Final (Onde o erro ocorria) ---
     # FPDF.output() retorna uma string que precisa ser convertida em bytes.
-    # Esta é a correção final: interceptar a string e codificar usando 'replace'
-    # para evitar o UnicodeEncodeError interno do FPDF.
+    # Usamos o encode final com replace para capturar qualquer metadado que o fpdf2 falhe ao codificar.
     pdf_content_str = pdf.output(dest='S') 
     return pdf_content_str.encode('latin-1', 'replace')
 
@@ -417,7 +421,6 @@ if prompt := st.chat_input("Digite sua resposta aqui..."):
 # --- 6. BOTÕES DE AÇÃO E DOWNLOAD (Sempre Visíveis na Sidebar) ---
 
 st.sidebar.subheader("⚙️ Ações")
-# CORREÇÃO: on_on_click -> on_click
 st.sidebar.button("Limpar Conversa e Recomeçar", on_click=clear_session_state) 
 st.sidebar.markdown("---")
 
