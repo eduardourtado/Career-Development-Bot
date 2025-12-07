@@ -35,23 +35,38 @@ st.markdown("""
     }
     
     /* 6. Oculta st.button simples (só aparecem os de formulário) */
-    .stButton>button {display: none;}
+    /* Remove esta regra para evitar conflito com botões de download e formulário,
+       e usa a regra 8 para estilizar apenas os botões dentro do formulário */
+    /* .stButton>button {display: none;} */
     
     /* 7. OCULTA BARRAS DE CABEÇALHO E RODAPÉ */
     header {visibility: hidden; height: 0px;}
     footer {visibility: hidden; height: 0px;}
     #MainMenu {visibility: hidden;}
     
-    /* 8. Estilo do botão de formulário e download para que apareçam */
+    /* 8. Estilo do botão de formulário e download (FUNDO AZUL) */
     div.stButton > button {
         display: inline-block; 
-        color: white; 
+        color: white; /* Texto Branco no botão normal (download e sidebar) */
         background-color: #4A90E2; 
         border: none;
         border-radius: 5px; 
         padding: 10px 15px;
         cursor: pointer;
     }
+    
+    /* 9. CORREÇÃO DE ILEGIBILIDADE DO BOTÃO DE FORMULÁRIO */
+    /* Força o texto dentro do botão "Confirmar e Continuar" a ser branco, 
+       usando o seletor mais específico do st.form. */
+    div[data-testid="stForm"] div.stButton button span {
+        color: #FFFFFF !important; 
+    }
+    
+    /* Se a regra 9 não funcionar, tente esta alternativa para o Streamlit antigo */
+    /* div[data-testid="stForm"] button {
+        color: #FFFFFF !important;
+    } */
+    
 </style>
 """, unsafe_allow_html=True)
 
