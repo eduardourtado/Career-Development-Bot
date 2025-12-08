@@ -3,7 +3,7 @@ import os
 from google import genai
 from google.genai.errors import APIError
 from google.genai.types import Content, Part
-from fpdf.fpdf import FPDF 
+from fpdf2 import FPDF  # <--- MUDANÇA PRINCIPAL: Usando fpdf2
 from datetime import datetime
 
 # --- Função de Limpeza de Estado ---
@@ -108,16 +108,16 @@ def format_transcript_data(messages):
 
 def clean_and_encode_text(text):
     """
-    Limpa o texto de Markdown e garante que qualquer caractere complexo seja substituído.
-    (Usando UTF-8 para melhor compatibilidade com caracteres Unicode complexos)
+    Limpa o texto de Markdown. Não faz mais encode/decode, 
+    pois o fpdf2 suporta strings Unicode diretamente.
     """
     clean = text.replace("`", "'").replace("**", "").replace("*", "")
-    return clean.encode('utf-8', 'replace').decode('utf-8')
+    return clean
 
 def pdf_print_content(pdf, data):
     """
     Imprime o conteúdo formatado no PDF com cores, negrito e um layout mais limpo.
-    (Melhoria Estética)
+    (Usando strings Unicode limpas)
     """
     
     MENTOR_BLUE = (100, 180, 255)   # Azul mais claro para maior contraste
@@ -128,6 +128,7 @@ def pdf_print_content(pdf, data):
     LINE_HEIGHT = 6.0 # Altura da linha um pouco maior para espaçamento
     
     for role, content in data:
+        # A string retornada aqui é Unicode limpa (UTF-8)
         clean_content = clean_and_encode_text(content)
 
         # 1. Impressão do Cabeçalho do Turno
@@ -154,11 +155,11 @@ def pdf_print_content(pdf, data):
         # Imprime o conteúdo em multi_cell, ajustando a largura para o recuo
         text_width = pdf.w - pdf.l_margin - pdf.r_margin - INDENT_WIDTH
         
-        # Usa o UTF-8 no multi_cell para garantir o máximo de caracteres
+        # Passa a string Unicode limpa diretamente
         pdf.multi_cell(
             text_width, 
             LINE_HEIGHT - 1.5, # Linha menor para texto corrido
-            clean_content.encode('utf-8', 'replace').decode('utf-8'),
+            clean_content,
             align='L'
         )
         
@@ -222,15 +223,15 @@ def generate_pdf_bytes(content_data, title_suffix, is_summary=False):
         
         clean_summary = clean_and_encode_text(content_data)
         
-        # Usa UTF-8 na conversão do Resumo
-        pdf.multi_cell(0, 6, clean_summary.encode('utf-8', 'replace').decode('utf-8'))
+        # Passa a string Unicode limpa diretamente
+        pdf.multi_cell(0, 6, clean_summary)
     else:
         # Modo Transcrição (espera lista de tuplas)
         pdf_print_content(pdf, content_data)
         
-    # --- 4. Saída Final (Garantia de Bytes Seguros) ---
-    # Força a saída para bytes compatíveis com Streamlit/PDF, contornando o erro interno do FPDF.
-    return pdf.output(dest='S').encode('latin-1', 'replace')
+    # --- 4. Saída Final (Bytes UTF-8 Seguros) ---
+    # fpdf2 retorna bytes UTF-8 por padrão no dest='S'.
+    return pdf.output(dest='S')
 
 
 # Função que executa o submit do formulário de seleção
